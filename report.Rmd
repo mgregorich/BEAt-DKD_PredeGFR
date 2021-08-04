@@ -10,303 +10,84 @@ output:
 
 
 ```{r setup, include=FALSE}
-rm(list = ls())
-knitr::opts_chunk$set(echo = F, warning=F, message=F)
+rm(list=ls())
 
-pacman::p_load(tidyr, dplyr, reshape2, ggplot2, openxlsx, stringr, transplantr, skimr,
-               lme4, flextable, MBESS)
+pacman::p_load(tidyr, plyr, reshape2, ggplot2, openxlsx, stringr, transplantr, skimr,
+               lme4, readxl, purrr, janitor, tableone, dplyr, flextable)
+
 
 # ------ Initialization 
+set.seed(12345)
+
 # Data and Paths
 data.path = "../Data/"
 GCKD.path = paste0(data.path, "GCKD/")
 PROVALID.path = paste0(data.path, "PROVALID/")
-
 out.path = "../Output/"
-set.seed((12345))
-
-# ------ Get data 
-data.gckd <- read.xlsx(paste0(GCKD.path, "20200203_GCKD_BEAtDKD_data_EOS.xlsx"), sheet=2)
-data.provalid <- as.data.frame(readRDS(paste0(PROVALID.path, "PROVALID_20170921.rds")))
 
 
-# ----- Data cleaning 
-data.gckd$subjid <- as.factor(data.gckd$subjid)
-data.gckd$BL_creavalue[which(data.gckd$BL_creavalue<0)] <- NA
-data.gckd$BL_ein_visdat <- convertToDate(data.gckd$BL_ein_visdat)
-data.gckd$FU2_fu_visdat <- convertToDate(data.gckd$FU2_fu_visdat)
-data.gckd$FU4_fu_visdat <- convertToDate(data.gckd$FU4_fu_visdat)
-data.gckd$FU6_fu_visdat <- convertToDate(data.gckd$FU6_fu_visdat)
-years <- (data.gckd$FU6_fu_visdat-data.gckd$BL_ein_visdat)/365.25
-data.gckd$FU6_age <- as.numeric(data.gckd$BL_age + round(years,1))
-
-
-# ----- Data Pre-Processing
-
-## GCKD - Compute eGFR & convert to long format
-data.gckd$eth <- "non-black"
-data.gckd$sex <- ifelse(data.gckd$BL_gender==1, "F", "M")
-data.gckd <- data.gckd %>%
-  mutate(BL_eGFR_epi = ckd_epi(creat = BL_creavalue, age = BL_age, sex = sex, eth = eth, units = "US"),
-         FU2_eGFR_epi = ckd_epi(creat = FU2_creavalue, age = FU2_fu2_age, sex = sex, eth = eth, units = "US"),
-         FU4_eGFR_epi = ckd_epi(creat = FU4_creavalue, age = FU4_fu4_age, sex = BL_gender, eth = eth, units = "US"),
-         FU6_eGFR_epi = ckd_epi(creat = FU6_creavalue, age = FU6_age, sex = sex, eth = eth, units = "US"),
-         BL_eGFR_mdrd = mdrd(creat = BL_creavalue, age = BL_age, sex = sex, eth = eth, units = "US"),
-         FU2_eGFR_mdrd = mdrd(creat = FU2_creavalue, age = FU2_fu2_age, sex = sex, eth = eth, units = "US"),
-         FU4_eGFR_mdrd = mdrd(creat = FU4_creavalue, age = FU4_fu4_age, sex = sex, eth = eth, units = "US"),
-         FU6_eGFR_mdrd = mdrd(creat = FU6_creavalue, age = FU6_age, sex = sex, eth = eth, units = "US"),
-         BL_Time_FU = 0, 
-         FU2_Time_FU = as.numeric(FU2_fu_visdat-BL_ein_visdat)/365.25,
-         FU4_Time_FU = as.numeric(FU4_fu_visdat-BL_ein_visdat)/365.25, 
-         FU6_Time_FU = as.numeric(FU6_fu_visdat-BL_ein_visdat)/365.25) %>%
-  rename(ID=subjid) %>%
-  filter(BL_diabetic==1) %>%
-  select(ID, BL_age, BL_gender,BL_diabetic, BL_creavalue, BL_creaunit, FU2_fu2_bmi_korr, FU2_fu2_smoking, 
-         BL_eGFR_epi, BL_eGFR_mdrd, FU2_fu2_bloodpr_sys, FU2_fu2_bloodpr_dias, FU2_hbavalue, FU2_hemovalue, FU2_fu2_uacr,
-         FU2_med_bp, FU2_med_dm, FU2_med_lipidsenker,
-         BL_eGFR_epi, BL_eGFR_mdrd, FU2_eGFR_epi, FU2_eGFR_mdrd, FU4_eGFR_epi, FU4_eGFR_mdrd, FU6_eGFR_epi, FU6_eGFR_mdrd,
-         BL_Time_FU, FU2_Time_FU, FU4_Time_FU, FU6_Time_FU)
-
-
-data.gckd.tmp1 <- data.gckd %>%
-  select(ID, BL_eGFR_epi, FU2_eGFR_epi, FU4_eGFR_epi,  FU6_eGFR_epi) %>%
-  `colnames<-`(c("ID","0","2","4","6")) %>%
-  pivot_longer(cols=2:5, names_to = "Time", values_to = "eGFR_epi") %>%
-  mutate(Cohort=1)
-
-data.gckd.tmp2 <- data.gckd %>%
-  select(ID, BL_eGFR_mdrd, FU2_eGFR_mdrd, FU4_eGFR_mdrd,  FU6_eGFR_mdrd) %>%
-  `colnames<-`(c("ID","0","2","4","6")) %>%
-  pivot_longer(cols=2:5, names_to = "Time", values_to = "eGFR_mdrd") %>%
-  mutate(Cohort=1) 
-
-data.gckd.tmp3 <- data.gckd %>%
-  select(ID, BL_Time_FU, FU2_Time_FU, FU4_Time_FU,  FU6_Time_FU) %>%
-  `colnames<-`(c("ID","0","2","4","6")) %>%
-  pivot_longer(cols=2:5, names_to = "Time", values_to = "Time_FU") %>%
-  mutate(Cohort=1) 
-
-data.gckd.long <- full_join(full_join(data.gckd.tmp1, data.gckd.tmp2, by=c("ID","Time","Cohort")),
-                            data.gckd.tmp3, by=c("ID","Time","Cohort"))
-data.gckd.long <- data.gckd.long[!is.na(data.gckd.long$eGFR_epi),]
-data.gckd.long <- full_join(data.gckd.long,data.gckd, by="ID")
-data.gckd.long$ID <- as.factor(data.gckd.long$ID)
-
-
-## PROVALID
-data.provalid <- data.provalid %>%
-  mutate(Time=round(as.numeric(Time_FU)/365.25,0),
-         Time_FU = Time_FU/365.25,
-         Cohort=2) %>%
-  rename(ID=PID,
-         eGFR_epi = eGFR_EPI,
-         eGFR_mdrd = eGFR_MDRD) %>%
-  filter(!is.na(eGFR_epi))
-
-
-# Merge GCKD + PROVAILD
-data.eGFR <- rbind(data.gckd.long[,c("ID","Cohort","Time","Time_FU","eGFR_epi")], data.provalid[,c("ID","Cohort","Time","Time_FU","eGFR_epi")] )
-data.eGFR$ID <- as.factor(data.eGFR$ID)
-data.eGFR$Time <- as.numeric(data.eGFR$Time)
-data.eGFR$eGFR_epi <- as.numeric(data.eGFR$eGFR_epi)
-
-
-# Exclude patients with (1) less than 3 data points, (2) no follow-up of at least 2 years and (3) eGFR > 30 at baseline
-size.full <- c(length(unique(data.eGFR$ID)),length(unique(data.provalid$ID)),length(unique(data.gckd$ID)))
-
-# (1)
-tmp <- as.data.frame.matrix(table(data.eGFR$ID, data.eGFR$Time)) 
-exclude.pats <- names(which(rowSums(tmp)<3))
-
-# (2)
-tmp <-data.eGFR %>% 
-  group_by(ID) %>% 
-  summarize(maxFUTime=max(Time_FU)) 
-exclude.pats <- c(exclude.pats,as.character(tmp[which(tmp$maxFUTime<2),]$ID))
-
-(3) 
-tmp <- data.eGFR %>% 
-  filter(Time==0 & eGFR_epi < 30) %>%
-  select(ID)
-exclude.pats <- c(exclude.pats,tmp)
-
-
-data.eGFR <- data.eGFR[!data.eGFR$ID %in% exclude.pats,]
-data.gckd <- data.gckd[!data.gckd$ID %in% exclude.pats,]
-data.gckd.long <- data.gckd.long[!data.gckd.long$ID %in% exclude.pats,]
-data.provalid <- data.provalid[!data.provalid$ID %in% exclude.pats,]
-size.cut <- c(length(unique(data.eGFR$ID)),length(unique(data.provalid$ID)),length(unique(data.gckd$ID)))
-size.cut
+# ------- Start the fun
+source("01_dataprep.R", print.eval=F)
 
 ```
-
-
-# Aim of the study
-The aim of the planned analysis in BEAt-DKD is the development of a risk prediction calculator for the individual risk of an eGFR loss per year including clinical variables using the PROVALID and the GCKD cohort. Specifically, after the successful implementation of an accurate and sufficiently validated prediction model, this should be made available online as a web application in order to enable the prediction for individual patients after entering the patient information.
-
-
-# Methods and materials
-
-## Study cohorts
-
-The basis of the risk prediction calculator for the eGFR loss per year are the two study cohorts GCKD (N=`r length(unique(data.gckd$subjid))`) and PROVALID (N=`r length(unique(data.provalid$PID))`). After exclusion of non-diabetic patients in the GCKD cohort, 1027 subjects remain.
 
 
 ```{r}
-# Median Follow-up
+# Number of subjects per country and cohort
+table(data.full[!duplicated(data.full$PatID),]$Cohort)
+table(data.full[!duplicated(data.full$PatID),]$Country)
 
-tmp1 <-data.gckd.long %>% 
-  group_by(ID) %>% 
-  summarize(maxFUTime=max(Time_FU, na.rm=T)) 
-tmp2 <-data.provalid %>% 
-  group_by(ID) %>% 
-  summarize(maxFUTime = max(Time_FU,na.rm = T)) 
 
-data.frame(rbind(summary(tmp1$maxFUTime),summary(tmp2$maxFUTime))) %>%
-  mutate(Cohort=c("GCKD","PROVALID")) %>%
-  relocate(Cohort, .before = Min.) %>%
-  mutate_at(2:7, round, 1) %>%
-  flextable %>%
-  bold(part = "header") %>%
-  set_caption("Distribution of follow-up times") %>%
-  autofit() %>% 
-  fit_to_width(6.5)
+# Distribution of baseline variables between PROVALID and GCKD
+data.full %>% 
+  filter(Time==0 & Cohort %in% "PROVALID") %>%
+  skim()
+
+data.full %>% 
+  filter(Time==0 & Cohort %in% "GCKD") %>%
+  skim()
+
+tbl <- data.frame(print(CreateTableOne(vars=c(colnames(data.full)[str_detect(colnames(data.full), "BL_")], "FU_eGFR_epi"), strata="Cohort", data=data.full[data.full$Time==0,], test=F)) )
+tbl$Variable <- rownames(tbl)
+
+tbl%>%
+  relocate(Variable, .before=GCKD) %>%
+  flextable() %>%
+  autofit()
+
+# Histogram of all baseline variables
+data.full %>%
+  select(BL_age, BL_gender, BL_bmi, BL_smoking, BL_bpsys, BL_bpdia, BL_hba1c, BL_serumchol, BL_hemo, 
+         BL_med_dm, BL_med_bp, BL_med_lipid, BL_uacr, BL_uacr_log2) %>%
+  mutate_all(as.numeric) %>%
+  gather %>%
+  ggplot(aes(value)) + 
+  geom_histogram(bins = 50) + 
+  facet_wrap(~key, scales = 'free_x') +
+  theme_bw()
+
+
+# Histograms per time point for eGFR
+data.full %>% filter(Time==0) %>%  pull(FU_eGFR_epi) %>% hist() 
+data.full %>% filter(Time==1) %>%  pull(FU_eGFR_epi) %>% hist() 
+data.full %>% filter(Time==2) %>%  pull(FU_eGFR_epi) %>% hist() 
+data.full %>% filter(Time==3) %>%  pull(FU_eGFR_epi) %>% hist() 
+data.full %>% filter(Time==4) %>%  pull(FU_eGFR_epi) %>% hist() 
+data.full %>% filter(Time==5) %>%  pull(FU_eGFR_epi) %>% hist() 
+data.full %>% filter(Time==6) %>%  pull(FU_eGFR_epi) %>% hist() 
+
+
+# ---------- Correlation
+x_tmp <- model.matrix(FU_eGFR_epi~BL_age + BL_gender + BL_smoking + BL_bmi + BL_bpsys + BL_bpdia + BL_hba1c 
+                      + BL_serumchol + BL_hemo + BL_uacr + BL_med_dm + BL_med_bp + BL_med_lipid, 
+                      data=data.full[data.full$Time==0,])[,-1]
+corr <- abs(cor(x_tmp))
+(corr>0.5)
+
+
+# --------- Missingness
+data.full <- data.full[complete.cases(data.full),]
+
 ```
-
-## eGFR measurements
-
-Creatinine levels were collected every two years for patients in the GCKD cohort. These collected values are used to compute the EGFR based on the CKD_EPI and the MDRD formula.
-
-```{r}
-data.gckd %>%
-  select(ID, BL_eGFR_epi, BL_eGFR_mdrd, FU2_eGFR_epi, FU2_eGFR_mdrd, FU4_eGFR_epi, FU4_eGFR_mdrd, FU6_eGFR_epi, FU6_eGFR_mdrd) %>%
-  skim(where(is.numeric)) %>%
-  select(2:11) %>%
-  mutate_at(3:10, round, 2) %>%
-  `colnames<-`(c("variable","missing", "complete rate","mean","sd","p0","p25","p50","p75","p100")) %>%
-  flextable %>%
-  bold(part = "header") %>%
-  set_caption("Distribution of the eGFR measurements across follow-up visits") %>%
-  autofit() %>% 
-  fit_to_width(6.5)
-```
-
-
-Furthermore, due to the inclusion and exclusion criteria of the GCKD study design, there should be no patients with eGFR values below 30 and above 90. Nevertheless, due to the early recruitment and the subsequent evaluation of the patient's measurements, there may be subjects with an eGFR of less than 30. 
-
-
-
-```{r}
-data.gckd %>%
-  mutate(BL_eGFR_epi_below30 = as.factor((BL_eGFR_epi <30)*1),
-         BL_eGFR_epi_above60 = as.factor((BL_eGFR_epi > 60)*1),
-         BL_eGFR_epi_above90 = as.factor((BL_eGFR_epi > 90)*1),
-         BL_eGFR_mdrd_below30 = as.factor((BL_eGFR_mdrd < 30)*1),
-         BL_eGFR_mdrd_above60 = as.factor((BL_eGFR_mdrd > 60)*1),
-         BL_eGFR_mdrd_above90 = as.factor((BL_eGFR_mdrd > 90)*1)) %>%
-  select(BL_eGFR_epi_below30, BL_eGFR_epi_above60,BL_eGFR_epi_above90, 
-         BL_eGFR_mdrd_below30, BL_eGFR_mdrd_above60, BL_eGFR_mdrd_above90) %>%
-  skim() %>%
-  select(c(2,3,4,6,7)) %>%
-  mutate_at(3, round, 3) %>%
-  `colnames<-`(c("variable","missing", "complete rate", "unique factors", "counts")) %>%
-  flextable %>%
-  bold(part = "header") %>%
-  set_caption("Check whether the eGFR EPI and eGFR MDRD values at baseline are outside the interval [30, 60]") %>%
-  autofit() %>% 
-  fit_to_width(6.5)
-
-data.gckd %>%
-    mutate(BL_eGFR_epi_below30 = as.factor((BL_eGFR_epi <30)*1),
-         BL_eGFR_epi_above60 = as.factor((BL_eGFR_epi > 60)*1),
-         BL_eGFR_mdrd_below30 = as.factor((BL_eGFR_mdrd < 30)*1),
-         BL_eGFR_mdrd_above60 = as.factor((BL_eGFR_mdrd > 60)*1)) %>%
-  filter(BL_eGFR_epi_below30==1 | BL_eGFR_mdrd_below30==1) %>%
-  select(ID, BL_age,BL_gender, BL_creavalue, BL_creaunit, BL_eGFR_epi, BL_eGFR_mdrd) %>%
-  write.xlsx(paste0(out.path,"gckd_eGFR30.xlsx"))
-```
-
-```{r}
-data.provalid %>%
-  filter(!is.na(Time)) %>%
-  group_by(Time) %>%
-  select(eGFR_epi, eGFR_mdrd) %>%
-  skim() %>%
-  select(c(2:11)) %>%
-  mutate_at(3:10, round, 2) %>%
-  `colnames<-`(c("variable","time", "missing","complete rate","mean","sd","p0","p25","p50","p75","p100")) %>%
-  flextable %>%
-  bold(part = "header") %>%
-  set_caption("Distribution of eGFR measurements in PROVALID") %>%
-  autofit() %>% 
-  fit_to_width(6.5)
-```
-
-```{r}
-data.eGFR %>%
-  filter(!is.na(Time)) %>%
-  group_by(Time) %>%
-  select(eGFR_epi) %>%
-  skim() %>%
-  select(c(2:11)) %>%
-  mutate_at(3:10, round, 2) %>%
-  `colnames<-`(c("variable","time", "missing","complete rate","mean","sd","p0","p25","p50","p75","p100")) %>%
-  flextable %>%
-  bold(part = "header") %>%
-  set_caption("Distribution of eGFR measurements in PROVALID") %>%
-  autofit() %>% 
-  fit_to_width(6.5)
-```
-
-```{r}
-ggplot(data.eGFR, aes(x=eGFR_epi)) + 
-  geom_histogram(color="black", fill="white") +
-  theme_bw() +
-  facet_wrap(~Time)
-```
-
-
-## eGFR slope estimation
-
-eGFR slopes were computed by mixed effect models adjusted by study cohort membership (GCKD, PROVALID).
-
-```{r, fig.cap="Distribution of the eGFR slope across subjects within PROVALID and GCKD", fig.align='center', fig.height=4, fig.width=4}
-
-data.frame(rbind(size.full, size.cut)) %>%
-  `colnames<-`(c("joint", "provalid", "gckd")) %>%
-  mutate(Vars=c("Full", ">=3 eGFRs")) %>%
-  relocate(Vars, .before=joint) %>%
-  flextable %>%
-  bold(part = "header") %>%
-  set_caption("Reduction of the sample size through omission of subjects with <3 eGFR measurements") %>%
-  autofit() %>% 
-  fit_to_width(6.5)
-```
-
-
-# MIXED MODEL (correlated random intercept and random slope)
-
-```{r}
-lme.eGFR <- lmer(eGFR_epi ~ Time + (Time|ID), data=data.eGFR)
-eGFR.slopes <- data.frame("ID"=rownames(coef(lme.eGFR)$ID), "eGFR_epi_Intercept"=coef(lme.eGFR)$ID[,1], "eGFR_epi_Slope"=coef(lme.eGFR)$ID[,2])
-
-data.gckd <- left_join(data.gckd, eGFR.slopes, by="ID")
-data.provalid <- left_join(data.provalid, eGFR.slopes, by="ID")
-data.eGFR <- left_join(data.eGFR, eGFR.slopes, by="ID")
-```
-
-
-```{r, fig.align='center', fig.height=4, fig.width=4, fig.cap="Distribution of the eGFR slopes"}
-hist(eGFR.slopes$eGFR_epi_Slope, xlab = "eGFR EPI slope", main="")
-```
-
-```{r, fig.align='center', fig.height=8, fig.width=6, fig.cap="Extract of the individual random effects of the mixed model"}
-tmp <- data.eGFR[data.eGFR$ID %in% sample(unique(data.eGFR$ID),36),]
-ggplot(data = tmp, mapping = aes(x = Time,  y = eGFR_epi)) +
-  geom_abline(aes(intercept = eGFR_epi_Intercept, slope = eGFR_epi_Slope)) +
-  geom_point(na.rm = T, colour="blue") +
-  facet_wrap(~ID)
-```
-
 
 
