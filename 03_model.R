@@ -9,99 +9,89 @@ source("01_dataprep.R", print.eval=F)
 source("02_IDA.R", print.eval=F)
 
 
+# ----------- FUNCTIONS ------------
+source("functions.R")
+
+
 pacman::p_load(nlme, lmerTest, MuMIn, JMbayes, splines,rms, Hmisc, concreg, caret, MASS, performance)
 
 
-# ---------------- FUNCTIONS --------------------------
-
-c_index <- function(pred, obs){
-  c.model <- concreg(data=data.frame(predicted=pred, observed=obs), observed~predicted, npar=TRUE)
-  return(1-cindex(c.model))
-}
-
-eval_preds <- function(pred, obs, fit){
-  df <- data.frame(pred=pred, obs=obs)
-  df <- df[complete.cases(df),]
-  r2 <- r2_nakagawa(fit.final)
-  
-  res <- data.frame(R2cond = r2[1],
-                    R2marg = r2[2],
-              RMSE = RMSE(df$pred, df$obs),
-              MAE = MAE(df$pred, df$obs),
-              CalbinLarge = mean(df$obs)- mean(df$pred),
-              CalbSlope=lm(df$pred ~ df$obs)$coefficients[2],
-              C = c_index(pred=df$pred, obs=df$obs))
-  return(res)
-}
-
-plot_calibration <- function(yobs, yhat, time="Not specified!"){
-  df <- data.frame(yobs=yobs, yhat=yhat)
-  res <- round(eval_preds(pred=yhat, obs = yobs),2)
-  
-  # Plot
-  plot_calibration_curve_ps <- ggplot(df, aes(x=yhat, y=yobs)) +
-    geom_point() +
-    scale_x_continuous(expand = c(0, 0), name = "Predicted", limits = c(0,150)) + 
-    scale_y_continuous(expand = c(0, 0), name = "Observed", limits = c(0,150)) +
-    geom_abline(intercept = 0) + 
-    ggtitle(paste0("FU time = ", time)) +
-    theme_bw() +
-    annotate("text", x = 25, y = 125, label = paste0("R2 cond. = ",res$R2_conditional ,
-                                                     "\nR2 marg. = ", res$R2_marginal, 
-                                                     "\nC-index = ", res$C, 
-                                                     "\nCalLarge = ", res$CalbinLarge, 
-                                                     "\nCalSlope = ", res$CalbSlope))
-  plot_calibration_curve_ps
-  
-  # filename <- paste0("plot_calcurve_", mod.method)
-  # png(file = paste(out.path, filename,".png", sep = ""), width = 5*600, height = 5*600, units = "px", res = 600)
-  # plot_calibration_curve_ps
-  # dev.off()
-}
-
-
-# ------------------------ END ------------------------------
-
-
-
-# ----------------  Model building -------------
-
-
+# ----- Model building
 pred.vars <- c("Time","BL_age", "BL_gender", "BL_smoking", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", 
                "BL_serumchol", "BL_hemo", "BL_uacr_log2", "BL_med_dm", "BL_med_bp", "BL_med_lipid", "BL_med_lipid")
 
-# --------- Non-linear interactions: BL_age (detected in IDA)
-init.fit1 <- lme(fixed=FU_eGFR_epi ~ Time + BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
-                   BL_hba1c + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid, 
-                 random=~Time+Time|PatID, data=data.full, control=lmeControl(opt = "optim"), method = "ML")
+
+# ----- Non-linear interactions
+# Fit model and check for non-linear behaviour in residuals vs independent variables
+fit.init <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
+                                                      BL_hba1c + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)), 
+                random=list(~1+Time|PatID, ~1|Country), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
 
 
-init.fit2 <- lme(fixed=FU_eGFR_epi ~ Time + BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
-                  BL_hba1c + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid, 
-                random=~Time+Time|PatID, data=data.full, control=lmeControl(opt = "optim"), method = "ML")
-anova(init.fit1, init.fit2)
+ggplot(data.frame(x1=data.full$BL_uacr_log2,residual=resid(fit.init, scaled=TRUE), time=data.full$Time),
+       aes(x=x1,y=residual, color=time)) +
+  geom_smooth(se=T) +
+  theme_bw() +
+  facet_wrap(~time)
+
+ggplot(data.frame(x1=data.full$BL_serumchol,residual=resid(fit.init, scaled=TRUE), time=data.full$Time),
+       aes(x=x1,y=residual, color=time)) +
+  geom_smooth(se=T) +
+  theme_bw() +
+  facet_wrap(~time)
+
+# Non-linear term for BL_uacr_log2
+fit.tmp1 <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
+                                                      BL_hba1c + BL_serumchol + BL_hemo + rcs(BL_uacr_log2,df=2) + BL_med_dm + BL_med_bp + BL_med_lipid)), 
+                random=list(~1+Time|PatID, ~1|Country), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
+anova(fit.init, fit.tmp1)
 
 
-# ----------- Pairwise interactions
-init.fit1 <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
-                BL_hba1c + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)), 
-                 random=list(~1+Time|PatID, ~1|Country), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
-init.fit2 <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
-                   BL_hba1c + rcs(BL_serumchol,df=3) + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)), 
-                 random=list(~1+Time|PatID, ~1|Country), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
-anova(init.fit1, init.fit2)
+ggplot(data.frame(x1=data.full$BL_uacr_log2,residual=resid(fit.tmp1, scaled=TRUE), time=data.full$Time),
+       aes(x=x1,y=residual, color=time)) +
+  geom_smooth(se=T) +
+  theme_bw() +
+  facet_wrap(~time)
+
+ggplot(data.frame(x1=data.full$BL_serumchol,residual=resid(fit.tmp1, scaled=TRUE), time=data.full$Time),
+       aes(x=x1,y=residual, color=time)) +
+  geom_smooth(se=T) +
+  theme_bw() +
+  facet_wrap(~time)
+
+# Non-linear term for BL_serumchol
+fit.tmp2 <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
+                                                     BL_hba1c + rcs(BL_serumchol,df=2) + BL_hemo + rcs(BL_uacr_log2,df=2) + BL_med_dm + BL_med_bp + BL_med_lipid)), 
+               random=list(~1+Time|PatID, ~1|Country), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
+anova(fit.tmp1, fit.tmp2)
+
+ggplot(data.frame(x1=data.full$BL_serumchol,residual=resid(fit.tmp2, scaled=TRUE), time=data.full$Time),
+       aes(x=x1,y=residual, color=time)) +
+  geom_smooth(se=T) +
+  theme_bw() +
+  facet_wrap(~time)
+
+ggplot(data.frame(x1=data.full$BL_BL_uacr_log2,residual=resid(fit.tmp2, scaled=TRUE), time=data.full$Time),
+       aes(x=x1,y=residual, color=time)) +
+  geom_smooth(se=T) +
+  theme_bw() +
+  facet_wrap(~time)
 
 
-# ------ All pairwise interactions ??
-# init.fit <- lme(fixed=FU_eGFR_epi ~ (Time + BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
-#                                        BL_hba1c + BL_serumchol + BL_hemo + BL_uacr + BL_med_dm + BL_med_bp + BL_med_lipid)^2, 
-#                 random=~Time+Time|PatID, data=data.full, control=lmeControl(opt = "optim"), method = "ML")
-# out.step <- stepAIC(init.fit, direction = 'backward')
+
+# ----- Pairwise interactions
+out.step <- stepAIC(fit.tmp2, 
+                    direction = 'forward', 
+                    scope=list(upper = ~ (Time + Time * (BL_bmi + BL_age + BL_gender + BL_smoking + 
+                                                           (BL_bpsys + BL_bpdia)^2 + BL_hba1c + rcs(BL_serumchol, df = 2) + 
+                                                           BL_hemo + rcs(BL_uacr_log2, df = 2) + BL_med_dm + BL_med_bp + 
+                                                           BL_med_lipid))))
+
 # saveRDS(out.step, file = "out.step.rds")
 
 
 # ----- Final model
-fit.final <- init.fit2
+fit.final <- out.step
 summary(fit.final)
 hist(fit.final$coefficients$random$PatID[,2])
 summary(fit.final$coefficients$random$PatID[,2])
@@ -133,19 +123,12 @@ ggplot(data.frame(x1=as.factor(data.full$Time),residual=resid(fit.final, scaled=
 qqnorm(residuals(fit.final))
 
 
-ggplot(data.frame(lev=hatvalues(fit.final),pearson=residuals(fit.final,type="pearson")),
-       aes(x=lev,y=pearson)) +
-  geom_point() +
-  theme_bw()
-
-
 
 
 # -------------------- Internal-external validation --------------------------------
 set.seed(123)
 data.full$fold <- as.numeric(data.full$Country)
-df.pred <- list()
-df.res <- list()
+df.pred <- df.res <- df.re <- list()
 k = length(unique(data.full$Country))
 i=1
 
@@ -154,24 +137,33 @@ for(i in 1:k){
   data.train <- data.full[data.full$fold != i, ] 
   data.test <- data.full[data.full$fold == i, ] 
   
-  fit.lme <- lme(fixed=FU_eGFR_epi ~ Time + BL_bmi + BL_age + BL_gender + BL_smoking + BL_bpsys + BL_bpdia + 
-                   BL_hba1c + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid, 
-                 random=~Time+Time|PatID, data=data.train, control=lmeControl(opt = "optim"), method = "ML")
-  summary(fit.lme)
+  # fit.lme <- lme(fixed=formula(fit.final), 
+  #                random=list(~1+Time|PatID, ~1|Country), data=data.train, control=lmeControl(opt = "optim"), method = "ML")
+  # fit.lme <- lme(fixed=formula(fit.final), 
+  #                random=~1+Time|PatID, data=data.train, control=lmeControl(opt = "optim"), method = "ML")
+  
+  fit.lme <- lme(fixed=FU_eGFR_epi ~ Time + Time * BL_bmi, 
+                 random=list(~1+Time|PatID, ~1|Country), data=data.train, control=lmeControl(opt = "optim"), method = "ML")
   
   # Update prediction with BL value
   data.test.t0 <- data.test[data.test$Time==0,]
-  pred <- IndvPred_lme(fit.lme, newdata = data.test.t0, timeVar = "Time", times = unique(data.test$Time), M = 500, return_data = T, interval = "prediction")
-  data.test.new <- full_join(data.test, pred[,c("PatID", "Time", "pred", "low", "upp")], by=c("PatID", "Time"))
+  res <- LongPred_ByBase(fit.lme, newdata = data.test.t0, timeVar = "Time", idVar="PatID", times = unique(data.test$Time))
+  
+  #pred <- IndvPred_lme(fit.lme, newdata = data.test.t0, timeVar = "Time", times = unique(data.test$Time), M = 500, return_data = T, interval = "prediction")
+  
+  pred <- res$Pred
+  data.test.new <- full_join(data.test, pred[,c("PatID", "Time","prob.prog" ,"pred", "low", "upp")], by=c("PatID", "Time"))
   df.pred[[i]] <- data.test.new
+  df.re[[i]] <- data.frame("PatID"= data.test.t0$PatID, "Fold"= i, res$RE.est)
   
   data.test.list <- split(data.test.new, as.factor(data.test.new$Time)) 
-  res <- lapply(data.test.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi))
+  res <- lapply(data.test.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi, fit = fit.lme))
   df.res[[i]] <- data.frame("Fold"=i,"Time"=unique(data.test$Time),do.call(rbind, res))
 }
 
 df.preds <- do.call(rbind, df.pred)
 df.stats <- do.call(rbind, df.res)
+df.reeff <- do.call(rbind, df.re)
 
 
 # Calibration plot per time t

@@ -192,6 +192,7 @@ data.all <- data.all %>%
   mutate_at(c("Cohort", "Country", "BL_gender", "BL_smoking", "BL_med_dm", "BL_med_bp", "BL_med_lipid"), as.factor)
 
 
+
 # ------------ Inclusion & Exclusion criteria
 data.all <- data.all %>%
   filter(!(Time==0 & FU_eGFR_epi<=30)) %>%
