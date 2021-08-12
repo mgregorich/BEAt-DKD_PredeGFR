@@ -22,8 +22,11 @@ out.path = "../Output/"
 
 
 # ------- Start the fun
+# Data preparation
 source("01_dataprep.R", print.eval=F)
 
+# Initial data analysis
 source("02_IDA.R", print.eval=F)
 
-source("03_reporting.R", print.eval=F)
+# Model building and validation
+source("03_model.R", print.eval=F)
