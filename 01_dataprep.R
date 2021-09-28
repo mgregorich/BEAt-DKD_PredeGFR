@@ -5,24 +5,8 @@
 ###################################################
 
 
-rm(list=ls())
 
-pacman::p_load(tidyr, plyr, reshape2, ggplot2, openxlsx, stringr, transplantr, skimr,
-               lme4, readxl, purrr, janitor, tableone, Hmisc, dplyr)
-
-
-# ------ Initialization 
-set.seed(12345)
-
-# Data and Paths
-data.path = "../Data/"
-GCKD.path = paste0(data.path, "GCKD/")
-PROVALID.path = paste0(data.path, "PROVALID/")
-out.path = "../Output/"
-
-
-
-## ------------------- FUNCTIONS ----------
+## -------------------------- FUNCTIONS -----------------------------------------------
 
 getProvalidFU <- function(sheet, path){
   df <- read_excel(path, sheet)
@@ -72,11 +56,95 @@ calcUACR <- function(df){
 
   return(UACR_mgg_adj)
 }
+##############################################################################################
 
 
-# ------------- Get data 
+# ------ Define object for tripod flowchart
+tripod_flowchart <- data.frame("Step"=c("all",  "excl2_baseunder30",  "excl3_nobase", "excl1_not3eGFR","post_excl","completecases","DevCohort"), 
+                        "GCKD"=rep(NA,7), 
+                        "PROVALID"=rep(NA,7),
+                        "DIACORE"=rep(NA,7))
+
+# ------------- Data Pre-processing
+## DIACORE
+data.diacore <-  read_excel(paste0(DIACORE.path, "BeatDKD_DIACORE_V1_V2R_V3R_13Mar2019_korr_13Aug2019_all_variables_nopw.xlsx"))
+tripod_flowchart$DIACORE[1] <- length(unique(data.diacore$patNr))
+
+data.diacore <- data.diacore %>%
+  dplyr::select(patNr, AGE_V1, genderCode, smoke_ever_V1, BMI_V1, RRsys_mean_V1, RRdia_mean_V1,UACR_V1, HbA1c_percent_V1,  CHOL_V1, Hb_V1,
+                Med_Lipid_V1, Med_BPlowering_V1, Med_Antidiabetika_V1,
+                eGFR_CKDEPI_V1, eGFR_CKDEPI_V2, eGFR_CKDEPI_V3) %>%
+  mutate(BL_map = (RRsys_mean_V1+ 2*RRdia_mean_V1)/3,
+         Country="Unknown",
+         Cohort=3,
+         genderCode = as.factor(genderCode-1),
+         smoke_ever_V1 = as.factor(ifelse(smoke_ever_V1==1, 0, 1)),
+         AGE_V1 = round(AGE_V1, 0),
+         patNr = as.character(patNr),
+         Hb_V1 = as.numeric(sub(",", ".", Hb_V1, fixed = TRUE))) %>%
+  relocate(c(Cohort, Country), .before = AGE_V1,) %>%
+  relocate(BL_map, .before=RRsys_mean_V1) 
+
+data.diacore <- merged.stack(data.diacore, id.vars="patNr", var.stubs=c("eGFR_CKDEPI"), sep = "_V") 
+data.diacore$.time_1 <- as.numeric(data.diacore$.time_1)-1
+colnames(data.diacore) <- c("PatID", "Time","FU_eGFR_epi", "Cohort", "Country","BL_age", "BL_sex", "BL_smoking","BL_bmi",
+                            "BL_map", "BL_bpsys", "BL_bpdia","BL_uacr", "BL_hba1c_perc", "BL_serumchol","BL_hemo", 
+                            "BL_med_lipid", "BL_med_bp", "BL_med_dm")
+data.diacore <- data.diacore %>%
+  mutate(BL_uacr_log2 =log(data.diacore$BL_uacr, 2),
+         BL_hba1c = (BL_hba1c_perc-2.15) * 10.929) %>%
+  mutate_at(vars(BL_med_bp, BL_med_dm, BL_med_lipid), ~as.factor(.)) %>%
+  filter(!(is.na(FU_eGFR_epi) & (Time %in% c(1,2))))
+
+
+
+
 ## GCKD
 data.gckd <- read_excel(paste0(GCKD.path, "Datenanfrage2_export_20210625.xlsx"))
+tripod_flowchart$GCKD[1] <- length(unique(data.gckd$subjid))
+
+
+data.gckd$eth <- "non-black"
+data.gckd <- data.gckd %>%
+  mutate(FU2_age = as.numeric(BL_age + round((FU2_fu_visdat-BL_ein_visdat)/365.25,0)),
+         FU3_age = as.numeric(BL_age + round((FU3_fu_visdat-BL_ein_visdat)/365.25,0)),
+         FU4_age = as.numeric(BL_age + round((FU4_fu_visdat-BL_ein_visdat)/365.25,0)),
+         FU5_age = as.numeric(BL_age + round((FU5_fu_visdat-BL_ein_visdat)/365.25,0)),
+         FU6_age = as.numeric(BL_age + round((FU6_fu_visdat-BL_ein_visdat)/365.25,0)),
+         BL_sex = BL_gender,
+         BL_gender = ifelse(BL_gender==1, "F", "M")) %>%
+  mutate(BL_eGFR_epi = ckd_epi(creat = BL_creavalue, age = BL_age, sex = BL_gender, eth = eth, units = "US"),
+         FU2_eGFR_epi = ckd_epi(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, eth = eth, units = "US"),
+         FU3_eGFR_epi = ckd_epi(creat = FU3_creavalue, age = FU3_age, sex = BL_gender, eth = eth, units = "US"),
+         FU4_eGFR_epi = ckd_epi(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, eth = eth, units = "US"),
+         FU5_eGFR_epi = ckd_epi(creat = FU5_creavalue, age = FU5_age, sex = BL_gender, eth = eth, units = "US"),
+         FU6_eGFR_epi = ckd_epi(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, eth = eth, units = "US"),
+         BL_eGFR_mdrd = mdrd(creat = BL_creavalue, age = BL_age, sex = BL_gender, eth = eth, units = "US"),
+         FU2_eGFR_mdrd = mdrd(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, eth = eth, units = "US"),
+         FU4_eGFR_mdrd = mdrd(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, eth = eth, units = "US"),
+         FU6_eGFR_mdrd = mdrd(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, eth = eth, units = "US"),
+         PatID=as.character(subjid),
+         Country="GE",
+         BL_smoking = ifelse(BL_smoking == 0, 0, 1)) %>%
+  dplyr::rename(BL_bpsys = BL_bloodpr_sys,
+                BL_bpdia = BL_bloodpr_dias,
+                BL_hemo = BL_hemovalue,
+                BL_hba1c = BL_hbavalue,
+                BL_hba1c_perc = BL_phbavalue,
+                BL_serumchol = BL_cholvalue1,
+                BL_med_lipid = BL_med_lipidsenker) 
+
+data.gckd.long <- data.gckd %>%
+  dplyr::select(PatID, BL_eGFR_epi, FU2_eGFR_epi, FU3_eGFR_epi, FU4_eGFR_epi, FU5_eGFR_epi, FU6_eGFR_epi) %>%
+  `colnames<-`(c("PatID","0","2","3","4","5","6")) %>%
+  pivot_longer(cols=2:7, names_to = "Time", values_to = "FU_eGFR_epi") %>%
+  mutate(Cohort="GCKD") %>%
+  filter(!is.na(FU_eGFR_epi)) %>%
+  mutate(Time=as.numeric(Time))
+
+data.gckd <- right_join(data.gckd, data.gckd.long, by="PatID")
+
+
 
 ## PROVALID
 file = paste0(PROVALID.path, "PROVALID BASE Final Data Export_Clinical_LocalLab_Endpoints_20200119.xls")
@@ -110,64 +178,24 @@ data.tmp3 <- do.call(rbind, data.tmp3)
 data.provalid <- left_join(left_join(data.tmp1, data.tmp2, by="Patient reference [ID]"), 
                            data.tmp3[,c("Patient reference [ID]", "Time", "FU_serumcrea")], by="Patient reference [ID]")
 rm(data.tmp1,data.tmp2,data.tmp3)
-
-
-
-# ----- Data Pre-Processing
-data.gckd$eth <- "non-black"
-data.gckd <- data.gckd %>%
-  mutate(FU2_age = as.numeric(BL_age + round((FU2_fu_visdat-BL_ein_visdat)/365.25,1)),
-         FU3_age = as.numeric(BL_age + round((FU3_fu_visdat-BL_ein_visdat)/365.25,1)),
-         FU4_age = as.numeric(BL_age + round((FU4_fu_visdat-BL_ein_visdat)/365.25,1)),
-         FU5_age = as.numeric(BL_age + round((FU5_fu_visdat-BL_ein_visdat)/365.25,1)),
-         FU6_age = as.numeric(BL_age + round((FU6_fu_visdat-BL_ein_visdat)/365.25,1))) %>%
-  mutate(BL_eGFR_epi = ckd_epi(creat = BL_creavalue, age = BL_age, sex = BL_gender, eth = eth, units = "US"),
-         FU2_eGFR_epi = ckd_epi(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, eth = eth, units = "US"),
-         FU3_eGFR_epi = ckd_epi(creat = FU3_creavalue, age = FU3_age, sex = BL_gender, eth = eth, units = "US"),
-         FU4_eGFR_epi = ckd_epi(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, eth = eth, units = "US"),
-         FU5_eGFR_epi = ckd_epi(creat = FU5_creavalue, age = FU5_age, sex = BL_gender, eth = eth, units = "US"),
-         FU6_eGFR_epi = ckd_epi(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, eth = eth, units = "US"),
-         BL_eGFR_mdrd = mdrd(creat = BL_creavalue, age = BL_age, sex = BL_gender, eth = eth, units = "US"),
-         FU2_eGFR_mdrd = mdrd(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, eth = eth, units = "US"),
-         FU4_eGFR_mdrd = mdrd(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, eth = eth, units = "US"),
-         FU6_eGFR_mdrd = mdrd(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, eth = eth, units = "US"),
-         PatID=as.character(subjid),
-         Country="GE",
-         BL_smoking = ifelse(BL_smoking == 0, 0, 1)) %>%
-  dplyr::rename(BL_bpsys = BL_bloodpr_sys,
-         BL_bpdia = BL_bloodpr_dias,
-         BL_hemo = BL_hemovalue,
-         BL_hba1c = BL_phbavalue,
-         BL_hba1c_perc = BL_hbavalue,
-         BL_serumchol = BL_cholvalue1,
-         BL_med_lipid = BL_med_lipidsenker) 
-
-data.gckd.long <- data.gckd %>%
-  dplyr::select(PatID, BL_eGFR_epi, FU2_eGFR_epi, FU3_eGFR_epi, FU4_eGFR_epi, FU5_eGFR_epi, FU6_eGFR_epi) %>%
-  `colnames<-`(c("PatID","0","2","3","4","5","6")) %>%
-  pivot_longer(cols=2:5, names_to = "Time", values_to = "FU_eGFR_epi") %>%
-  mutate(Cohort="GCKD") %>%
-  filter(!is.na(FU_eGFR_epi)) %>%
-  mutate(Time=as.numeric(Time))
-
-data.gckd <- right_join(data.gckd, data.gckd.long, by="PatID")
-
+tripod_flowchart$PROVALID[1] <- length(unique(data.provalid$`Patient reference [ID]`))
 
 data.provalid <- data.provalid  %>%
   clean_names()
 data.provalid <- data.provalid  %>%
-  mutate(BL_age = round(as.numeric(as.Date(date_of_visit_yyyy_mm_dd)-as.Date(ISOdate(year_of_birth, 1, 1)))/365.25,1),
-         BL_gender = ifelse(gender=="Female",1,0),
+  mutate(BL_age = round(as.numeric(as.Date(date_of_visit_yyyy_mm_dd)-as.Date(ISOdate(year_of_birth, 1, 1)))/365.25,0),
+         BL_gender = ifelse(gender=="Female","F","M"),
+         BL_sex = ifelse(gender=="Female", 1, 0),
          BL_smoking = ifelse(smoking=="never",0,1),
          BL_bmi = calcBMI(height_m=height_cm/100, body_weight_kg),
          BL_diabetic=1,
          BL_serumchol = ifelse(is.na(serum_cholesterol_total_mg_dl), serum_cholesterol_total_mmol_l*38.67 , serum_cholesterol_total_mg_dl),
          BL_hemo = ifelse(is.na(hemoglobin_g_dl), hemoglobin_g_l/10, hemoglobin_g_dl),
          BL_uacr = calcUACR(data.provalid),
-         BL_hba1c_perc = ifelse(is.na(hb_a1c_mmol_l), ((hb_a1c_percent-2.15) * 10.929), hb_a1c_mmol_l),
-         BL_hba1c = ifelse(is.na(hb_a1c_percent), (hb_a1c_mmol_l/10.929)+2.15, hb_a1c_percent),
+         BL_hba1c_perc = ifelse(is.na(hb_a1c_percent), (hb_a1c_mmol_l/10.929)+2.15, hb_a1c_percent ),
+         BL_hba1c = ifelse(is.na(hb_a1c_mmol_l), ((hb_a1c_percent-2.15) * 10.929), hb_a1c_mmol_l),
          eth = "non-black",
-         FU_age = BL_age + as.numeric(data.provalid$time),
+         FU_age = round(BL_age + as.numeric(data.provalid$time),0),
          FU_eGFR_epi = ckd_epi(creat = data.provalid$fu_serumcrea, age = FU_age, sex = BL_gender, eth = eth, units = "US"),
          BL_eGFR_epi = ckd_epi(creat = serum_creatinine_mg_dl, age = BL_age, sex=BL_gender, ethnicity = eth, units="US"),
          Cohort="PROVALID",
@@ -181,27 +209,88 @@ data.provalid <- data.provalid  %>%
                 BL_med_dm = bl_med_dm)
       
 
-# ------------ Merge datasets
-cols <- c("PatID", "Cohort","Country","Time","FU_eGFR_epi","BL_age", "BL_gender", "BL_smoking",
-          "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid")
+# ------------ Merge datasets (GCKD and PROVALID) = development cohort
+cols <- c("PatID", "Cohort","Country","Time","FU_eGFR_epi","BL_age", "BL_sex", "BL_smoking",
+          "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_hba1c_perc", "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid")
 
 data.all <- rbind(data.provalid[,cols], data.gckd[,cols])
 
 data.all <- data.all %>%
+  mutate(BL_uacr_log2=log(BL_uacr,2)) %>%
   mutate_at(c("Time","FU_eGFR_epi", "BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr"),as.numeric) %>%
-  mutate_at(c("Cohort", "Country", "BL_gender", "BL_smoking", "BL_med_dm", "BL_med_bp", "BL_med_lipid"), as.factor)
+  mutate_at(c("Cohort", "Country", "BL_sex", "BL_smoking", "BL_med_dm", "BL_med_bp", "BL_med_lipid"), as.factor) %>%
+  mutate_at(c("BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr",  "BL_uacr_log2"),
+            ~pmin(pmax(.x, quantile(.x, .01, na.rm=T)), quantile(.x, .99, na.rm=T)))
 
 
 
 # ------------ Inclusion & Exclusion criteria
 data.all <- data.all %>%
-  filter(!(Time==0 & FU_eGFR_epi<=30)) %>%
   mutate(BL_uacr_log2=log(BL_uacr,2),
-         Cohort=ifelse(Cohort %in% "PROVALID", 1, 0)) %>%  # Code PROVALID = 1, GCKD = 0
+         Cohort=ifelse(Cohort %in% "PROVALID", 1, 0),     # Code PROVALID = 1, GCKD = 0
+         BL_map = (BL_bpsys+ 2*BL_bpdia)/3) %>%  
   filter(BL_hemo > 2)                                     # Sorts out values in wrong unit column (g/l instead of g/dL)
 
+# Exclude Patients that fall below 30 at baseline
+excl_patid_1 <- data.all[data.all$Time==0 & data.all$FU_eGFR_epi <=30,]$PatID
+tripod_flowchart$PROVALID[2] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_1,]$PatID))
+tripod_flowchart$GCKD[2] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_1,]$PatID))
+
+drop.egfr30 <- data.diacore[(data.diacore$Time==0 & data.diacore$FU_eGFR_epi < 30),]$PatID
+tripod_flowchart$DIACORE[2] <- length(drop.egfr30)
+
+# Exclude patients with no baseline value
+df.time <- as.data.frame.matrix(table(data.all$PatID, data.all$Time))
+excl_patid_2 <- rownames(df.time[df.time$`0` == 0,])
+tripod_flowchart$PROVALID[3] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_2,]$PatID))
+tripod_flowchart$GCKD[3] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_2,]$PatID))
+
+drop.nobaseline <- data.diacore[data.diacore$Time == 0 & is.na(data.diacore$FU_eGFR_epi),]$PatID
+tripod_flowchart$DIACORE[3] <- length(drop.nobaseline)
+
+# Only consider patients with more than 2 visits
 rec.visits <- apply(as.data.frame.matrix(table(data.all$PatID, data.all$Time)),1, sum)
-data.all <- data.all[data.all$PatID %in% names(which(rec.visits >=3)),]
+excl_patid_3 <- unique(names(which(rec.visits <3)))
+tripod_flowchart$PROVALID[4] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_3,]$PatID))
+tripod_flowchart$GCKD[4] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_3,]$PatID))
+
+drop.fu3 <- names(which(table(data.diacore$PatID) < 3))
+tripod_flowchart$DIACORE[4] <- length(drop.fu3)
+
+# Remove
+data.all <- data.all[!data.all$PatID %in% c(excl_patid_1, excl_patid_2,excl_patid_3),]
+data.diacore <- data.diacore %>%
+  filter(!(PatID %in% drop.egfr30 | PatID %in% drop.fu3))
 
 
-  
+tripod_flowchart$PROVALID[5] <- length(unique(data.all[data.all$Cohort==1,]$PatID))
+tripod_flowchart$GCKD[5] <- length(unique(data.all[data.all$Cohort==0,]$PatID))
+tripod_flowchart$DIACORE[5] <- length(unique(data.diacore$PatID))
+
+
+
+# --------- Complete-cases
+data.full <- data.all[complete.cases(data.all),]
+data.full$Country <- factor(data.full$Country, levels=c("AT", "GE", "HU", "PL", "UK", "NL"))
+data.rem <- data.all[!complete.cases(data.all),]
+data.diacore <- data.diacore[complete.cases(data.diacore),]
+
+length(unique(data.all$PatID))
+length(unique(data.full$PatID))
+
+table(data.all[data.all$Time==0,]$Country)
+table(data.full[data.full$Time==0,]$Country)
+table(data.rem[data.rem$Time==0,]$Country)
+
+tripod_flowchart$PROVALID[6] <- length(unique(data.full[data.full$Cohort==1,]$PatID))
+tripod_flowchart$GCKD[6] <- length(unique(data.full[data.full$Cohort==0,]$PatID))
+tripod_flowchart$DIACORE[6] <- length(unique(data.diacore$PatID))
+
+tripod_flowchart$PROVALID[7] <- length(unique(data.full$PatID))
+tripod_flowchart$GCKD[7] <- length(unique(data.full$PatID))
+tripod_flowchart$DIACORE[7] <- length(unique(data.diacore$PatID))
+
+
+tripod_flowchart
+
+
