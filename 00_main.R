@@ -24,9 +24,9 @@ source("03_model.R", print.eval=F)
 # Model evaluation (figures, tables)
 source("04_eval.R", print.eval=F)
 
-# Shiny web implementation
-# source("05_extval.R", print.eval=F)
+# External validation
+source("05_extval.R", print.eval=F)
 
 # Shiny web implementation
-source("06_shiny.R", print.eval=F)
+# source("06_shiny.R", print.eval=F)
 
