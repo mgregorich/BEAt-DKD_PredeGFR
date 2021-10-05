@@ -100,14 +100,16 @@ plots[[3]]
 data.tmp <- data.full[data.full$Time==0,]
 table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
                                           "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), strata="Cohort", test=F)
-write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_dev.xlsx"))
+write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_dev.xlsx"), 
+           overwrite = TRUE)
 CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
                                       "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid"),  test=F)
 
 data.tmp <- data.diacore[data.diacore$Time == 0,]
 table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
                                                 "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), test=F)
-write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_val.xlsx"))
+write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_val.xlsx"), 
+           overwrite = TRUE)
 
 
 # ------------- Table: longitudinal eGFR measurements stratified by cohort
