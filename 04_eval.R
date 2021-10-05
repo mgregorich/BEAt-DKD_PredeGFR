@@ -58,6 +58,25 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev.png"),width=10, height=6)
 
+# subject specific trajectories, comparing updated and no-update predictions
+df.melt_0 <- melt(df.preds_0[,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
+df.melt.small_0 <- df.melt_0[df.melt_0$PatID %in% unique(df.melt.small$PatID), ]
+df.melt.small_0$variable = "pred_0"
+df.melt.small_0 <- rbind(df.melt.small[, c("PatID", "Time", "variable", "value")], 
+                         df.melt.small_0)
+
+ggplot(data =df.melt.small_0, aes(x = Time, y = value,  col=variable)) +
+  geom_point(size=1) +
+  geom_line(data=df.melt.small_0[!is.na(df.melt.small_0$value),], aes(color=variable)) +
+  scale_linetype_manual(values=c("solid", "solid", "dashed")) +
+  scale_color_manual(values=c("black", "blue", "red"), labels=c("Observed", "Predicted", "No Update")) +
+  scale_x_continuous(expand=c(0,0),breaks = seq(0,7,1), limits = c(0,7)) +
+  scale_y_continuous(expand=c(0,0), "eGFR") +
+  ggtitle("") +
+  theme_bw() +
+  facet_wrap(~PatID) +
+  theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
+ggsave(paste0(out.path, "fig_indvPred_eGFR_dev_noUpdate.png"),width=10, height=6)
 
 # Mean country trajectories
 df.preds %>%
@@ -158,5 +177,3 @@ ggsave(paste0(out.path, "fig_prob_progression_",abs(slope_cutpoint),"_dev.png"),
 summary(df.preds.t0$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==0,]$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==1,]$prob.prog)
-
-
