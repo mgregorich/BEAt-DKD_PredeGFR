@@ -8,7 +8,7 @@
 
 
 # -------- Data preparation, initial data analysis and general functions
-# rm(list=ls())
+source("setup.R")
 # source("01_dataprep.R", print.eval=F)
 # source("02_IDA.R", print.eval=F)
 # source("functions_aux.R")
@@ -17,16 +17,18 @@
 
 # ------------------- Model building ---------------------------------
 
-slope.cutpoint=-3
-
 # --------------- Mixed model ------ ----
 
 fit.final <- lme(fixed=FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
                random=list(~1|Country,~1+Time|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
-saveRDS(fit.final, file=paste0("shiny/risk_model.rds"))
-saveRDS(fit.final, file=paste0("risk_model.rds"))
 
+# Prediction without BL value
+data.preds_0 = data.full
+data.preds_0$pred = fitted(fit.final)
+
+plot_calibration(yobs=data.preds_0[data.preds_0$Time==1,]$FU_eGFR_epi, yhat=data.preds_0[data.preds_0$Time==1,]$pred, time=1)
+plot_calibration(yobs=data.preds_0[data.preds_0$Time==5,]$FU_eGFR_epi, yhat=data.preds_0[data.preds_0$Time==5,]$pred, time=5)
 
 # UPDATE prediction with BL value
 data.full.t0 <- data.full[data.full$Time==0,]
@@ -44,6 +46,9 @@ plot_calibration(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.pre
 
 # ----- Final model
 summary(fit.final)
+print(fit.final$coefficients$random$Country[,1])
+hist(fit.final$coefficients$random$PatID[,1])
+summary(fit.final$coefficients$random$PatID[,1])
 hist(fit.final$coefficients$random$PatID[,2])
 summary(fit.final$coefficients$random$PatID[,2])
 fit.final$coefficients$fixed
@@ -84,7 +89,7 @@ points(qqline(residuals(fit.final)))
 # -------------------- Internal-external validation --------------------------------
 set.seed(123)
 data.full$fold <- as.numeric(data.full$Country)
-df.pred <- df.res <- df.re <- list()
+df.pred_0 <- df.pred <- df.res <- df.re <- list()
 f = length(unique(data.full$Country))
 i=1
 
@@ -97,12 +102,16 @@ for(i in 1:f){
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
                  random=list(~1|Country,~1+Time|PatID), data=data.train, control=lmeControl(opt = "optim", maxIter = 200), method = "ML")
   
+  # Prediction without BL value and no population level estimates
+  df.pred_0[[i]] = data.test
+  df.pred_0[[i]]$pred = predict(fit.lme, newdata = data.test, level = 0)
+  
   # Update prediction with BL value
   data.test.t0 <- data.test[data.test$Time==0,]
   data.test.t0$Country <- "Unknown"
   res <- LongPred_ByBase(lmeObject=fit.lme, 
                          newdata = data.test.t0, 
-                         cutpoint = slope.cutpoint,
+                         cutpoint = slope_cutpoint,
                          timeVar = "Time", idVar="PatID", idVar2="Country",
                          times =unique(data.full$Time)[-1], 
                          all_times=T)
@@ -121,12 +130,17 @@ for(i in 1:f){
 }
 
 # Concatenate
+df.preds_0 <- do.call(rbind, df.pred_0)
 df.preds <- do.call(rbind, df.pred)
 df.stats <- do.call(rbind, df.res)
 df.reeff <- do.call(rbind, df.re)
 
 
 # ----- Calibration plot per time t
+
+# internal-external predictions, original population level predictions
+plot_calibration(yobs=df.preds_0[df.preds_0$Time==1,]$FU_eGFR_epi, yhat=df.preds_0[df.preds_0$Time==1,]$pred, time=1)
+plot_calibration(yobs=df.preds_0[df.preds_0$Time==5,]$FU_eGFR_epi, yhat=df.preds_0[df.preds_0$Time==5,]$pred, time=5)
 
 # R2 for fit.lme; C-index, CalLarge and Calslope computed for test set
 plot_calibration(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, time=1)
