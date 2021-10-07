@@ -272,9 +272,16 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
     low <- apply(sampled_y, 1, quantile, probs = (1 - level) / 2)
     upp <- apply(sampled_y, 1, quantile, probs = 1 - (1 - level) / 2)
     
-    low.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = (1 - level) / 2)
-    upp.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = 1 - (1 - level) / 2)
-    sd.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, sd)
+    if(nrow(newdata)>1){
+      low.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = (1 - level) / 2)
+      upp.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = 1 - (1 - level) / 2)
+      sd.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, sd)
+    }else{
+      low.dyi <- apply(sampled_dy,1, quantile, probs = (1 - level) / 2)[1]
+      upp.dyi <- apply(sampled_dy,1, quantile, probs = 1 - (1 - level) / 2)[1]
+      sd.dyi <- apply(sampled_dy,1, sd)[1]
+    }
+
     
   }
   
