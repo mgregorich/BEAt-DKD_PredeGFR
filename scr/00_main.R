@@ -11,10 +11,6 @@ rm(list=ls())
 source("setup.R")
 
 
-
-
-
-
 # ------- Start the fun
 # Data preparation
 source("01_dataprep.R", print.eval=F)
@@ -31,6 +27,4 @@ source("04_eval.R", print.eval=F)
 # External validation
 source("05_extval.R", print.eval=F)
 
-# Shiny web implementation
-# source("06_shiny.R", print.eval=F)
 

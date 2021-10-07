@@ -6,13 +6,9 @@
 
 
 
-
 # -------- Data preparation, initial data analysis and general functions
 source("setup.R")
-# source("01_dataprep.R", print.eval=F)
-# source("02_IDA.R", print.eval=F)
-# source("functions_aux.R")
-
+source("01_dataprep.R", print.eval=F)
 
 
 # ------------------- Model building ---------------------------------
@@ -23,18 +19,14 @@ fit.final <- lme(fixed=FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + 
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
                random=list(~1|Country,~1+Time|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
 
-# Prediction without BL value
-data.preds_0 = data.full
-data.preds_0$pred = fitted(fit.final)
-
-plot_calibration(yobs=data.preds_0[data.preds_0$Time==1,]$FU_eGFR_epi, yhat=data.preds_0[data.preds_0$Time==1,]$pred, time=1)
-plot_calibration(yobs=data.preds_0[data.preds_0$Time==5,]$FU_eGFR_epi, yhat=data.preds_0[data.preds_0$Time==5,]$pred, time=5)
 
 # UPDATE prediction with BL value
 data.full.t0 <- data.full[data.full$Time==0,]
+data.full.t0$Country <- "Unknown"
 res <- LongPred_ByBase(lmeObject=fit.final, newdata = data.full.t0, timeVar = "Time", idVar="PatID", idVar2="Country",
                        times = unique(data.full$Time)[-1], all_times=F)
 data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
+
 
 # Before update
 plot_calibration(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$prior.pred, time=1)
