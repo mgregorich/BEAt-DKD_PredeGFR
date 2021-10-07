@@ -7,8 +7,10 @@
 
 
 # -------- Data preparation, initial data analysis and general functions
-source("setup.R")
-source("01_dataprep.R", print.eval=F)
+
+rm(list = ls())
+source("scr/setup.R")
+source("scr/01_dataprep.R", print.eval=F)
 
 
 # ------------------- Model building ---------------------------------
