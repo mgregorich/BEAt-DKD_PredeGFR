@@ -29,7 +29,8 @@ eval_preds <- function(pred, obs, N=NULL, k=NULL){
   return(res)
 }
 
-plot_calibration <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F){
+plot_calibration <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F, 
+                             out.path = "."){
   df <- data.frame(yobs=yobs, yhat=yhat)
   
   if(!is.null(fit)){

@@ -14,7 +14,8 @@ tbl_tmp <- lapply(unique(data.full$Time), function(x) eval_preds(pred=df.preds[d
                                                                  k=sum(anova(fit.final)$numDF)))
 tbl_performance <- data.frame("Time"=seq(0,7,1),round(do.call(rbind, tbl_tmp),3))
 # tbl_performance$C <- round(sapply(0:7, function(x) mean(df.stats[df.stats$Time==x,]$C, na.rm=T)),3)
-write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"))
+write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"), 
+           overwrite = TRUE)
 
 
 # Calibration plot
@@ -27,13 +28,13 @@ write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"))
 # plot_calibration(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$prior.pred, time=7, save=T)
 
 
-plot_calibration(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, time=1, save=T)
-plot_calibration(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, time=2, save=T)
-plot_calibration(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, time=3, save=T)
-plot_calibration(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, time=4, save=T)
-plot_calibration(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, time=5, save=T)
-plot_calibration(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, time=6, save=T)
-plot_calibration(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, time=7, save=T)
+plot_calibration(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, time=1, save=T, out.path = out.path)
+plot_calibration(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, time=2, save=T, out.path = out.path)
+plot_calibration(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, time=3, save=T, out.path = out.path)
+plot_calibration(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, time=4, save=T, out.path = out.path)
+plot_calibration(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, time=5, save=T, out.path = out.path)
+plot_calibration(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, time=6, save=T, out.path = out.path)
+plot_calibration(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, time=7, save=T, out.path = out.path)
 
 
 # Plot subject-specific trajectories
@@ -57,6 +58,25 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev.png"),width=10, height=6)
 
+# subject specific trajectories, comparing updated and no-update predictions
+df.melt_0 <- melt(df.preds_0[,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
+df.melt.small_0 <- df.melt_0[df.melt_0$PatID %in% unique(df.melt.small$PatID), ]
+df.melt.small_0$variable = "pred_0"
+df.melt.small_0 <- rbind(df.melt.small[, c("PatID", "Time", "variable", "value")], 
+                         df.melt.small_0)
+
+ggplot(data =df.melt.small_0, aes(x = Time, y = value,  col=variable)) +
+  geom_point(size=1) +
+  geom_line(data=df.melt.small_0[!is.na(df.melt.small_0$value),], aes(color=variable)) +
+  scale_linetype_manual(values=c("solid", "solid", "dashed")) +
+  scale_color_manual(values=c("black", "blue", "red"), labels=c("Observed", "Predicted", "No Update")) +
+  scale_x_continuous(expand=c(0,0),breaks = seq(0,7,1), limits = c(0,7)) +
+  scale_y_continuous(expand=c(0,0), "eGFR") +
+  ggtitle("") +
+  theme_bw() +
+  facet_wrap(~PatID) +
+  theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
+ggsave(paste0(out.path, "fig_indvPred_eGFR_dev_noUpdate.png"),width=10, height=6)
 
 # Mean country trajectories
 df.preds %>%
@@ -139,7 +159,7 @@ df$name <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hb
                                       "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
 df$CI <- paste0("(",df$lower,", " ,df$upper,")")
 tbl_fixeff <- cbind(df[!str_detect(df$variable, "Time"),c(5,2,6)], df[str_detect(df$variable, "Time"),c(2,6)])
-write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"))
+write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"), overwrite = TRUE)
 
 
 # Individual risk predictions
@@ -157,5 +177,3 @@ ggsave(paste0(out.path, "fig_prob_progression_",abs(slope_cutpoint),"_dev.png"),
 summary(df.preds.t0$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==0,]$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==1,]$prob.prog)
-
-

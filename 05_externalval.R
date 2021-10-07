@@ -7,25 +7,7 @@
 
 rm(list=ls())
 
-pacman::p_load(tidyr, plyr, reshape2, ggplot2, openxlsx, stringr, transplantr, skimr,
-               lme4, readxl, purrr, janitor, tableone, dplyr,
-               nlme, lmerTest, MuMIn, JMbayes, splines, rms, Hmisc, concreg, caret, MASS, performance)
-
-
-# ------ Initialization 
-set.seed(12345)
-
-# Data and Paths
-data.path = "../Data/"
-GCKD.path = paste0(data.path, "GCKD/")
-PROVALID.path = paste0(data.path, "PROVALID/")
-DIACORE.path = paste0(data.path, "DIACORE/")
-out.path = "../Output/"
-
-slope.cutpoint=-3
-
-# Load auxiliary functions 
-source("functions_aux.R")
+source("setup.R")
 
 
 # ------- Start the fun
@@ -33,13 +15,13 @@ source("functions_aux.R")
 source("01_dataprep.R", print.eval=F)
 
 # ------------ Model validation ---------------------------
-risk_model <- readRDS("risk_model.rds")
+risk_model <- readRDS(file.path(out.path, "riskpred_model.rds"))
 
 data.diacore.t0 <- data.frame(data.diacore[data.diacore$Time==0,])
 data.diacore.t0$Country <- "Unknown"
 res <- LongPred_ByBase(lmeObject=risk_model, 
                        newdata = data.diacore.t0, 
-                       cutpoint = slope.cutpoint,
+                       cutpoint = slope_cutpoint,
                        timeVar = "Time", idVar="PatID", idVar2="Country",
                        times =unique(data.diacore$Time)[-1], 
                        all_times=T)
@@ -50,9 +32,9 @@ data.diacore.new <- full_join(data.diacore, res$Pred[,c("PatID", "Time","pred", 
 
 # Calibration plot
 plot_calibration(yobs=data.diacore.new[data.diacore.new$Time==1,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==1,]$pred, 
-                 cohort="extval", time=1, save=T)
+                 cohort="extval", time=1, save=T, out.path = out.path)
 plot_calibration(yobs=data.diacore.new[data.diacore.new$Time==2,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==2,]$pred, 
-                 cohort="extval", time=2, save=T)
+                 cohort="extval", time=2, save=T, out.path = out.path)
 
 
 # Model performance and validation
@@ -61,7 +43,8 @@ tbl_tmp <- lapply(unique(data.diacore.new$Time), function(x) eval_preds(pred=dat
                                                                  N=length(unique(risk_model$data$PatID)), 
                                                                  k=sum(anova(risk_model)$numDF)))
 tbl_performance <- data.frame("Time"=unique(data.diacore.new$Time),round(do.call(rbind, tbl_tmp),3))
-write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval.xlsx"))
+write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval.xlsx"), 
+           overwrite = TRUE)
 
 
 # Probability of progression
@@ -73,7 +56,8 @@ ggplot(data.diacore.new.t0, aes(x=prob.prog)) +
   scale_y_continuous(expand=c(0,0),"Density") +
   theme_bw() +
   theme(text = element_text(size=18), legend.position = "bottom", legend.title = element_blank()) 
-ggsave(paste0(out.path, "fig_prob_progression_SC",abs(slope_cutpoint),"_extval.png"),width=8, height=6)
+ggsave(paste0(out.path, "fig_prob_progression_SC",abs(slope_cutpoint),"_extval.png"),
+       width=8, height=6)
 
 
 # Subject-specific trajectories
