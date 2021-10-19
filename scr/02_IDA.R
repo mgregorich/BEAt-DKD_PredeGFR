@@ -5,9 +5,9 @@
 ###################################################
 
 
-
-# ----- Descriptive statistics
-
+####################################################################################
+## ----- Descriptive statistics & data inspection
+##################################################################################
 # Number of subjects per country and cohort
 table(data.full[!duplicated(data.full$PatID),]$Cohort)
 table(data.full[!duplicated(data.full$PatID),]$Country)
@@ -95,8 +95,19 @@ plots <- lapply(cont.vars, function(x) plot_fun(x=x, y="FU_eGFR_epi", time=1))
 plots[[3]]
 
 
+# ----- Temporal deviation from the follow-up years
+tmp <- data.full[data.full$Cohort ==0, c("PatID", "Time","FU_date")]
+tmp.fu <- data.frame(spread(tmp, key = Time, value=FU_date))
+data.fu <- apply(tmp.fu[,-c(1,2)],2, function(x) difftime(x ,tmp.fu$X0, units="days"))/365.25
+colnames(data.fu) <- c("D2", "D3", "D4", "D5", "D6")
+data.fu <- data.frame(cbind(tmp.fu, data.fu))
+data.fu <- left_join(data.full[,c("PatID", "Cohort")], data.fu, by="PatID")
+data.fu <- data.fu[duplicated(data.fu),]
 
-# -------------- TABLE 1
+
+#####################################################################################################
+# ------------------------------ TABLE 1 -----------------------------------
+####################################################################################################
 data.tmp <- data.full[data.full$Time==0,]
 table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
                                           "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), strata="Cohort", test=F)
@@ -121,6 +132,8 @@ table(data.diacore$Time)
 library(pmsampsize)
 
 pmsampsize(type = "c", rsquared = 0.7, parameters = 13, intercept = 78.4, sd = 21.4, shrinkage = 0.99)
+
+
 
 #########################################################################################################
 # ----------- INITIAL MODEL BUILDING (Apparent)- Non-linearities? Interactions? -------------------------

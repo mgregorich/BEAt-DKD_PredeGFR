@@ -8,23 +8,23 @@ rm(list=ls())
 
 # Initialise global values
 
-source("setup.R")
+source("scr/setup.R")
 
 
 # ------- Start the fun
 # Data preparation
-source("01_dataprep.R", print.eval=F)
+source("scr/01_dataprep.R", print.eval=F)
 
 # Initial data analysis
-source("02_IDA.R", print.eval=F)
+source("scr/02_IDA.R", print.eval=F)
 
 # Model building and validation
-source("03_model.R", print.eval=F)
+source("scr/03_model.R", print.eval=F)
 
 # Model evaluation (figures, tables)
-source("04_eval.R", print.eval=F)
+source("scr/04_eval.R", print.eval=F)
 
 # External validation
-source("05_extval.R", print.eval=F)
+source("scr/05_extval.R", print.eval=F)
 
 
