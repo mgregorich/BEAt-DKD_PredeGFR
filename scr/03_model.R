@@ -1,4 +1,4 @@
-##################################################
+###################################################
 # Author: Mariella Gregorich
 # Date: 30/06/2021
 # Info: Model building and validation
@@ -8,14 +8,15 @@
 
 # -------- Data preparation, initial data analysis and general functions
 
-rm(list = ls())
-source("scr/setup.R")
-source("scr/01_dataprep.R", print.eval=F)
+# rm(list = ls())
+# source("scr/setup.R")
+# source("scr/01_dataprep.R", print.eval=F)
 
 
-# ------------------- Model building ---------------------------------
+################################################################################
+# ----------------------------- Model development ------------------------------
+################################################################################
 
-# --------------- Mixed model ------ ----
 
 fit.final <- lme(fixed=FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
@@ -31,20 +32,18 @@ data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pre
 
 
 # Before update
-plot_calibration(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$prior.pred, time=1)
-plot_calibration(yobs=data.preds[data.preds$Time==2,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==2,]$prior.pred, time=2)
-plot_calibration(yobs=data.preds[data.preds$Time==3,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==3,]$prior.pred, time=3)
-plot_calibration(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==4,]$prior.pred, time=4)
-plot_calibration(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$prior.pred, time=5)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$prior.pred, time=1)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==2,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==2,]$prior.pred, time=2)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==3,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==3,]$prior.pred, time=3)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==4,]$prior.pred, time=4)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$prior.pred, time=5)
 
 # After update
-plot_calibration(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$pred, time=1)
-plot_calibration(yobs=data.preds[data.preds$Time==2,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==2,]$pred, time=2)
-plot_calibration(yobs=data.preds[data.preds$Time==3,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==3,]$pred, time=3)
-plot_calibration(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==4,]$pred, time=4)
-plot_calibration(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$pred, time=5)
-
-
+plot_calibration_cont(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$pred, time=1)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==2,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==2,]$pred, time=2)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==3,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==3,]$pred, time=3)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==4,]$pred, time=4)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$pred, time=5)
 
 
 # ----- Final model
@@ -59,7 +58,10 @@ data.full$resid <- residuals(fit.final)
 saveRDS(fit.final, paste0(out.path,"riskpred_model.rds"))
 
 
-# ------- Internal validation (Model accuracy)
+
+################################################################################
+# ------------------ Internal validation (Model accuracy) ----------------------
+################################################################################
 # Fitted values vs standardized residuals
 plot(fit.final, resid(., scaled=TRUE) ~ fitted(.), abline = 0)
 
@@ -88,11 +90,13 @@ plot(qqnorm(residuals(fit.final)))
 points(qqline(residuals(fit.final)))
 
 
+################################################################################
+# -------------------- Internal-external validation ----------------------------
+################################################################################
 
-# -------------------- Internal-external validation --------------------------------
 set.seed(123)
 data.full$fold <- as.numeric(data.full$Country)
-df.pred_0 <- df.pred <- df.res <- df.re <- list()
+df.pred <- df.res <- df.re <- list()
 f = length(unique(data.full$Country))
 i=1
 
@@ -104,10 +108,6 @@ for(i in 1:f){
   fit.lme <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
                  random=list(~1|Country,~1+Time|PatID), data=data.train, control=lmeControl(opt = "optim", maxIter = 200), method = "ML")
-  
-  # Prediction without BL value and no population level estimates
-  df.pred_0[[i]] = data.test
-  df.pred_0[[i]]$pred = predict(fit.lme, newdata = data.test, level = 0)
   
   # Update prediction with BL value
   data.test.t0 <- data.test[data.test$Time==0,]
@@ -133,24 +133,24 @@ for(i in 1:f){
 }
 
 # Concatenate
-df.preds_0 <- do.call(rbind, df.pred_0)
 df.preds <- do.call(rbind, df.pred)
 df.stats <- do.call(rbind, df.res)
 df.reeff <- do.call(rbind, df.re)
 
 
-# ----- Calibration plot per time t
 
-# internal-external predictions, original population level predictions
-plot_calibration(yobs=df.preds_0[df.preds_0$Time==1,]$FU_eGFR_epi, yhat=df.preds_0[df.preds_0$Time==1,]$pred, time=1)
-plot_calibration(yobs=df.preds_0[df.preds_0$Time==5,]$FU_eGFR_epi, yhat=df.preds_0[df.preds_0$Time==5,]$pred, time=5)
+################################################################################
+# ---------------------------- "True" probability of progression ---------------
+################################################################################
 
-# R2 for fit.lme; C-index, CalLarge and Calslope computed for test set
-plot_calibration(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, time=1)
-plot_calibration(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, time=2)
-plot_calibration(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, time=3)
-plot_calibration(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, time=4)
-plot_calibration(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, time=5)
-plot_calibration(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, time=6)
-plot_calibration(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, time=7)
+true.prog <- df.preds %>%
+  mutate(Time=as.numeric(Time)) %>%
+  group_by(PatID) %>%
+  do(broom::tidy(lm(FU_eGFR_epi ~ Time,  data = .))) %>%
+  filter(term %in% "Time") %>%
+  dplyr::select(PatID, estimate) %>%
+  `colnames<-`(c("PatID", "true.slope")) %>%
+  mutate(true.prob = (true.slope <= slope_cutpoint)*1) %>%
+  data.frame()
 
+df.preds <- left_join(df.preds, true.prog, by="PatID")

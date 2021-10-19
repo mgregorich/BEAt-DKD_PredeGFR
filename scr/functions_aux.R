@@ -5,6 +5,15 @@
 # ---------------------------------------------------------------------
 
 
+
+
+recodeDates <- function(x){
+  x=str_replace(x, "Mrz", "März")
+  x.new=if_else(str_detect(x, "^[:digit:]+$"), as.character(as.Date(as.numeric(x), origin = "1899-12-30")), as.character(as.Date(x, "%d%b%Y")))
+  x.new = as.Date(x.new)
+  return(x.new)
+}
+
 c_index <- function(pred, obs, N, k){
   c.model <- concreg(data=data.frame(predicted=pred, observed=obs), observed~predicted, npar=TRUE)
   return(1-cindex(c.model))
@@ -29,7 +38,7 @@ eval_preds <- function(pred, obs, N=NULL, k=NULL){
   return(res)
 }
 
-plot_calibration <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F, 
+plot_calibration_cont <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F, 
                              out.path = "."){
   df <- data.frame(yobs=yobs, yhat=yhat)
   
@@ -64,7 +73,36 @@ plot_calibration <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort
   # dev.off()
 }
 
-
+plot_calibration_bin <- function(pred, true, out.path, save=F){
+  # Generate calibration curve plot for binary outcome (0,1)
+  data <- data.frame("pred"=pred,"true"=true)
+  
+  df <- data.frame(obs_prob=rep(0,10), std_obs=rep(0,10),pred_prob=rep(0,10)) 
+  qPS <- quantile(data$pred, seq(0,0.9,0.1))
+  deciles <- sapply(1:nrow(data), function(x) sum(data$pred[x] >=qPS))
+  
+  # Mean Predicted Probability in each decile
+  df$pred_prob <- sapply(1:10, function(x) mean(data[deciles == x,]$pred))
+  
+  # Relative Frequency of receiving CT in each decile + St.D
+  df$obs_prob <- sapply(1:10, function(x) nrow(data[deciles == x & data$true == 1,])/nrow(data[deciles == x,]))
+  df$std_obs <- sapply(1:10,function(x) sqrt((df$obs_prob[x]*(1-df$obs_prob[x]))/nrow(data[deciles == x & data$true == 1,])))
+  
+  p <- ggplot(df, aes(x=pred_prob, y=obs_prob,group=pred_prob)) +
+    geom_point() +
+    stat_boxplot(geom ='errorbar') +
+    scale_x_continuous(expand = c(0, 0), limits = c(0,1.05), breaks=seq(0,1,0.2), name = "Predicted Probability") + 
+    scale_y_continuous(expand = c(0, 0), limits = c(0,1.05), breaks=seq(0,1,0.2), name = "Observed Probability") +
+    geom_abline(intercept = 0) + 
+    geom_errorbar(aes(x=pred_prob, ymin=obs_prob-std_obs, ymax=obs_prob+std_obs), width=0.025)+
+    theme_bw()+ 
+    theme(axis.line = element_line(colour = "black"),
+          panel.border = element_blank(),
+          panel.background = element_blank()) 
+  print(p)
+  if(save){ggsave(paste0(out.path, "fig_cal_probability.png"), width = 20, height = 20, dpi = 640, units="cm", limitsize = F)}
+  return(p)
+}
 
 right_rows <- function (data, times, ids, Q_points) {
   fids <- factor(ids, levels = unique(ids))

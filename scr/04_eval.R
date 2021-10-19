@@ -1,13 +1,14 @@
 ##################################################
 # Author: Mariella Gregorich
 # Date: 30/06/2021
-# Info: Model building and validation
+# Info: Model evaluation
 ###################################################
 
 
-# ---------------------------------------- MODEL EVALUATION -------------------------------
+################################################################################
+# --------------- Model discrimination, precision and fit ----------------------
+################################################################################
 
-# Model performance and validation
 tbl_tmp <- lapply(unique(data.full$Time), function(x) eval_preds(pred=df.preds[df.preds$Time==x,]$pred, 
                                                                  obs=df.preds[df.preds$Time==x,]$FU_eGFR_epi, 
                                                                  N=length(unique(fit.final$data$PatID)), 
@@ -18,26 +19,43 @@ write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"),
            overwrite = TRUE)
 
 
-# Calibration plot
-# plot_calibration(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$prior.pred, time=1, save=T)
-# plot_calibration(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$prior.pred, time=2, save=T)
-# plot_calibration(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$prior.pred, time=3, save=T)
-# plot_calibration(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$prior.pred, time=4, save=T)
-# plot_calibration(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$prior.pred, time=5, save=T)
-# plot_calibration(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$prior.pred, time=6, save=T)
-# plot_calibration(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$prior.pred, time=7, save=T)
+################################################################################
+# ----------------------------- Calibration ------------------------------------
+################################################################################
+# Before update
+# plot_calibration_cont(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$prior.pred, time=1, save=T)
+# plot_calibration_cont(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$prior.pred, time=2, save=T)
+# plot_calibration_cont(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$prior.pred, time=3, save=T)
+# plot_calibration_cont(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$prior.pred, time=4, save=T)
+# plot_calibration_cont(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$prior.pred, time=5, save=T)
+# plot_calibration_cont(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$prior.pred, time=6, save=T)
+# plot_calibration_cont(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$prior.pred, time=7, save=T)
+
+# After update
+plot_calibration_cont(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, time=1, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, time=2, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, time=3, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, time=4, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, time=5, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, time=6, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, time=7, save=T, out.path = out.path)
+
+# Probability of progression
+pred_prob = df.preds[df.preds$Time==0,]$prob.prog
+true_prob = df.preds[df.preds$Time==0,]$true.prob
+plot_calibration_bin(pred=pred_prob, true=true_prob, out.path = out.path, save=T)
+Brier <- mean((pred_prob-true_prob)^2)
+C.index <- somers2(pred_prob, true_prob)["C"]
+Deviance<- -2*sum(true_prob*log(pred_prob) + (1-true_prob)*log(1-pred_prob) )
+print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), " and deviance = ", round(Deviance,2)))
 
 
-plot_calibration(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, time=1, save=T, out.path = out.path)
-plot_calibration(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, time=2, save=T, out.path = out.path)
-plot_calibration(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, time=3, save=T, out.path = out.path)
-plot_calibration(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, time=4, save=T, out.path = out.path)
-plot_calibration(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, time=5, save=T, out.path = out.path)
-plot_calibration(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, time=6, save=T, out.path = out.path)
-plot_calibration(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, time=7, save=T, out.path = out.path)
 
+################################################################################
+# ---------------------------- Model fit ---------------------------------------
+################################################################################
 
-# Plot subject-specific trajectories
+# ----- Plot subject-specific trajectories
 which.max(abs(fit.final$coefficients$random$PatID[,2]))
 
 set.seed(666)
@@ -58,7 +76,7 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev.png"),width=10, height=6)
 
-# subject specific trajectories, comparing updated and no-update predictions
+# ---- subject specific trajectories, comparing updated and no-update predictions
 df.melt_0 <- melt(df.preds_0[,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
 df.melt.small_0 <- df.melt_0[df.melt_0$PatID %in% unique(df.melt.small$PatID), ]
 df.melt.small_0$variable = "pred_0"
@@ -78,7 +96,7 @@ ggplot(data =df.melt.small_0, aes(x = Time, y = value,  col=variable)) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev_noUpdate.png"),width=10, height=6)
 
-# Mean country trajectories
+# ---- Mean country trajectories
 df.preds %>%
   group_by(Country, Time) %>%
   summarise(pm = median(FU_eGFR_epi, na.rm=T)) %>%
@@ -88,7 +106,7 @@ df.preds %>%
   theme_bw()
 
 
-# Longitudinal trajectory of observed eGFR per country
+# ---- Longitudinal trajectory of observed eGFR per country
 df.preds$Time <- as.factor(df.preds$Time)
 ggplot(df.preds,aes(x = Time, y = FU_eGFR_epi, fill=Country))  +
   geom_boxplot(aes(x=Time, fill=Country), outlier.shape = NA) +
@@ -111,7 +129,7 @@ ggsave(paste0(out.path, "fig_longiobs_eGFR_cohort_dev.png"),width=10, height=6)
 
 
 
-# Longitudinal trajectory of predicted eGFR per country
+# ---- Longitudinal trajectory of predicted eGFR per country
 ggplot(df.preds,aes(x = Time, y = pred, fill=Country))  +
   geom_boxplot(aes(x=Time, fill=Country), outlier.shape = NA) +
   stat_boxplot(aes(fill=Country),geom ='errorbar') +
@@ -120,7 +138,7 @@ ggplot(df.preds,aes(x = Time, y = pred, fill=Country))  +
   theme(text = element_text(size=16))
 ggsave(paste0(out.path, "fig_longipred_eGFR.png"),width=12, height=6)
 
-# Longitudinal trajectory of predicted eGFR per cohort
+# ---- Longitudinal trajectory of predicted eGFR per cohort
 df.preds$Cohort <- as.factor(df.preds$Cohort)
 ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
   geom_boxplot(aes(x=Time, fill=Cohort), outlier.shape = NA) +
@@ -132,7 +150,7 @@ ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
 ggsave(paste0(out.path, "fig_longipred_eGFR_cohort_dev.png"),width=10, height=6)
 
 
-# Forest plot of model coefficients
+# ---- Forest plot of model coefficients
 df <- data.frame(variable=rownames(intervals(fit.final)[[1]]),
                  effect=as.numeric(intervals(fit.final)[[1]][,2]),
                  lower=as.numeric(intervals(fit.final)[[1]][,1]),
@@ -162,7 +180,7 @@ tbl_fixeff <- cbind(df[!str_detect(df$variable, "Time"),c(5,2,6)], df[str_detect
 write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"), overwrite = TRUE)
 
 
-# Individual risk predictions
+# ---- Individual risk predictions
 df.preds.t0 <- df.preds[df.preds$Time==0,]
 
 ggplot(df.preds.t0, aes(x=prob.prog, fill=Cohort)) +

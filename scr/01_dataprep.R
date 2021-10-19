@@ -69,11 +69,14 @@ tripod_flowchart <- data.frame("Step"=c("all",  "excl2_baseunder30",  "excl3_nob
 ## DIACORE
 data.diacore <-  read_excel(paste0(DIACORE.path, "BeatDKD_DIACORE_V1_V2R_V3R_13Mar2019_korr_13Aug2019_all_variables_nopw.xlsx"))
 tripod_flowchart$DIACORE[1] <- length(unique(data.diacore$patNr))
+data.diacore$visitDate_char_V1=do.call("c",lapply(data.diacore$visitDate_char_V1, recodeDates))
+data.diacore$visitDate_char_V2=do.call("c",lapply(data.diacore$visitDate_char_V2, recodeDates))
+data.diacore$visitDate_char_V3=do.call("c",lapply(data.diacore$visitDate_char_V3, recodeDates))
 
 data.diacore <- data.diacore %>%
   dplyr::select(patNr, AGE_V1, genderCode, smoke_ever_V1, BMI_V1, RRsys_mean_V1, RRdia_mean_V1,UACR_V1, HbA1c_percent_V1,  CHOL_V1, Hb_V1,
                 Med_Lipid_V1, Med_BPlowering_V1, Med_Antidiabetika_V1,
-                eGFR_CKDEPI_V1, eGFR_CKDEPI_V2, eGFR_CKDEPI_V3) %>%
+                visitDate_char_V1, eGFR_CKDEPI_V1, visitDate_char_V2, eGFR_CKDEPI_V2, visitDate_char_V3, eGFR_CKDEPI_V3) %>%
   mutate(BL_map = (RRsys_mean_V1+ 2*RRdia_mean_V1)/3,
          Country="Unknown",
          Cohort=3,
@@ -89,7 +92,7 @@ data.diacore <- merged.stack(data.diacore, id.vars="patNr", var.stubs=c("eGFR_CK
 data.diacore$.time_1 <- as.numeric(data.diacore$.time_1)-1
 colnames(data.diacore) <- c("PatID", "Time","FU_eGFR_epi", "Cohort", "Country","BL_age", "BL_sex", "BL_smoking","BL_bmi",
                             "BL_map", "BL_bpsys", "BL_bpdia","BL_uacr", "BL_hba1c_perc", "BL_serumchol","BL_hemo", 
-                            "BL_med_lipid", "BL_med_bp", "BL_med_dm")
+                            "BL_med_lipid", "BL_med_bp", "BL_med_dm", "FU0_date", "FU1_date", "FU2_date")
 data.diacore <- data.diacore %>%
   mutate(BL_uacr_log2 =log(data.diacore$BL_uacr, 2),
          BL_hba1c = (BL_hba1c_perc-2.15) * 10.929) %>%
@@ -142,7 +145,15 @@ data.gckd.long <- data.gckd %>%
   filter(!is.na(FU_eGFR_epi)) %>%
   mutate(Time=as.numeric(Time))
 
-data.gckd <- right_join(data.gckd, data.gckd.long, by="PatID")
+data.gckd.date <- data.gckd %>%
+  dplyr::select(PatID, BL_ein_visdat, FU2_fu_visdat, FU3_fu_visdat, FU4_fu_visdat, FU5_fu_visdat, FU6_fu_visdat) %>%
+  `colnames<-`(c("PatID","0","2","3","4","5","6")) %>%
+  pivot_longer(cols=2:7, names_to = "Time", values_to = "FU_date") %>%
+  filter(!is.na(FU_date)) %>%
+  mutate(Time=as.numeric(Time))
+
+
+data.gckd <- right_join(data.gckd, left_join(data.gckd.long, data.gckd.date, by=c("PatID","Time")), by="PatID")
 
 
 
@@ -175,8 +186,14 @@ data.tmp2 <- read_excel(file, sheet=2)[,lab.cols]
 data.tmp3 <- lapply(fu.sheets, function(x) getProvalidFU(x, path=file))
 data.tmp3 <- do.call(rbind, data.tmp3)
 
+# Change dates with wrongly have a 3 at start e.g. 3012
+data.tmp3$date_yyyy_mm_dd_10[str_detect(data.tmp3$date_yyyy_mm_dd_10, "^3") & !is.na(data.tmp3$date_yyyy_mm_dd_10)] <- na.omit(sub("^.", "2",data.tmp3$date_yyyy_mm_dd_10[str_detect(data.tmp3$date_yyyy_mm_dd_10, "^3")]))
+# Change dates with wrongly 9 at second postion e.g. 2912
+data.tmp3$date_yyyy_mm_dd_10[substr(data.tmp3$date_yyyy_mm_dd_10,2,2) %in% "9"]   <- "2014-10-29 UTC"
+data.tmp3$date_yyyy_mm_dd_10[substr(data.tmp3$date_yyyy_mm_dd_10,3,3) %in% "4"]   <- "2016-04-11 UTC"
+
 data.provalid <- left_join(left_join(data.tmp1, data.tmp2, by="Patient reference [ID]"), 
-                           data.tmp3[,c("Patient reference [ID]", "Time", "FU_serumcrea")], by="Patient reference [ID]")
+                           data.tmp3[,c("Patient reference [ID]", "Time", "date_yyyy_mm_dd_10","FU_serumcrea")], by="Patient reference [ID]")
 rm(data.tmp1,data.tmp2,data.tmp3)
 tripod_flowchart$PROVALID[1] <- length(unique(data.provalid$`Patient reference [ID]`))
 
@@ -206,11 +223,15 @@ data.provalid <- data.provalid  %>%
                 BL_bpdia = diastolic_mm_hg,
                 BL_med_lipid = bl_med_lipid,
                 BL_med_bp = bl_med_bp,
-                BL_med_dm = bl_med_dm)
+                BL_med_dm = bl_med_dm,
+                FU_date=date_yyyy_mm_dd_10) %>%
+  dplyr::select(PatID, Time, Country, Cohort, FU_date, FU_eGFR_epi, BL_age, BL_sex, BL_smoking, BL_bmi, 
+         BL_uacr, BL_hemo, BL_serumchol, BL_hba1c_perc, BL_hba1c, BL_bpsys, BL_bpdia,
+         BL_med_bp, BL_med_lipid, BL_med_dm)
       
 
 # ------------ Merge datasets (GCKD and PROVALID) = development cohort
-cols <- c("PatID", "Cohort","Country","Time","FU_eGFR_epi","BL_age", "BL_sex", "BL_smoking",
+cols <- c("PatID", "Cohort","Country","Time","FU_date", "FU_eGFR_epi","BL_age", "BL_sex", "BL_smoking",
           "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_hba1c_perc", "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid")
 
 data.all <- rbind(data.provalid[,cols], data.gckd[,cols])
