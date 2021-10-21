@@ -96,13 +96,15 @@ plots[[3]]
 
 
 # ----- Temporal deviation from the follow-up years
-tmp <- data.full[data.full$Cohort ==0, c("PatID", "Time","FU_date")]
-tmp.fu <- data.frame(spread(tmp, key = Time, value=FU_date))
-data.fu <- apply(tmp.fu[,-c(1,2)],2, function(x) difftime(x ,tmp.fu$X0, units="days"))/365.25
-colnames(data.fu) <- c("D2", "D3", "D4", "D5", "D6")
-data.fu <- data.frame(cbind(tmp.fu, data.fu))
-data.fu <- left_join(data.full[,c("PatID", "Cohort")], data.fu, by="PatID")
-data.fu <- data.fu[duplicated(data.fu),]
+summary(data.full[data.full$Time==0,]$Time_exact)
+summary(data.full[data.full$Time==1,]$Time_exact)
+summary(data.full[data.full$Time==2,]$Time_exact)
+summary(data.full[data.full$Time==3,]$Time_exact)
+summary(data.full[data.full$Time==4,]$Time_exact)
+summary(data.full[data.full$Time==5,]$Time_exact)
+summary(data.full[data.full$Time==6,]$Time_exact)
+summary(data.full[data.full$Time==7,]$Time_exact)
+
 
 
 #####################################################################################################
