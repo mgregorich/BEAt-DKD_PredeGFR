@@ -68,14 +68,13 @@ smilegraph <- function(risk){
 
 shinyServer(function(input, output, session) {
   
-  
+
   observeEvent(input$add_pred, {
     if(input$add_pred == 2){
-      show(id = "lab")
+      show(id = "lab1")
     }else{
-      hide(id = "lab")
-    }     })
-  
+      hide(id = "lab1")}})
+
   
   inputdata <- eventReactive(input$goButton, {
     if(input$add_pred==2){

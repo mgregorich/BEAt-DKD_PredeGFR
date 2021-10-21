@@ -253,11 +253,11 @@ data.all <- data.all %>%
   filter(BL_hemo > 2)                                     # Sorts out values in wrong unit column (g/l instead of g/dL)
 
 # Exclude Patients that fall below 30 at baseline
-excl_patid_1 <- data.all[data.all$Time==0 & data.all$FU_eGFR_epi <=30,]$PatID
+excl_patid_1 <- data.all[data.all$Time==0 & data.all$FU_eGFR_epi <31,]$PatID
 tripod_flowchart$PROVALID[2] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_1,]$PatID))
 tripod_flowchart$GCKD[2] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_1,]$PatID))
 
-drop.egfr30 <- data.diacore[(data.diacore$Time==0 & data.diacore$FU_eGFR_epi < 30),]$PatID
+drop.egfr30 <- data.diacore[(data.diacore$Time==0 & data.diacore$FU_eGFR_epi < 31),]$PatID
 tripod_flowchart$DIACORE[2] <- length(drop.egfr30)
 
 # Exclude patients with no baseline value

@@ -4,7 +4,7 @@
 # Info: user interface file - shiny
 ################################
 
-pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png)
+pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png, shinyWidgets)
 source("functions_aux.R")
 
 # -------------------- SHINY User Interface  ---------------------------
@@ -28,12 +28,15 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                       h4(id="text3", "Use of the prediction tool does not create an express or implied physician-patient relationship. CeMSIIS does not endorse or claim validity for the prediction tools found on the meduniwien.ac.at website. The activities and products of CeMSIIS and its developers and agents are not endorsed by our past, present, or future employers. CeMSIIS does not record specific prediction tool user information and does not contact users of the prediction tools."),
                       h4(id="text3", "You are hereby advised to consult with a physician or other professional healthcare provider prior to making any decisions, or undertaking any actions or not undertaking any actions related to any healthcare problem or issue you might have at any time, now or in the future. In using the prediction tools, you agree that neither CeMSIIS nor any other party is or will be liable or otherwise responsible for any decision made or any action taken or any action not taken due to your use of any information presented in the prediction tool.")
                     )
-                      ),
+           ),
            tabPanel(title="Model",
                     
                     fluidPage( 
                       tags$head(
                         tags$style(
+                          HTML(".checkbox {margin: 0}
+                                .checkbox p {margin: 0;}
+                                .shiny-input-container {margin-bottom: 0;}" ),
                           HTML("hr {border-top: 1px solid #000000;}"),
                           HTML("#big-heading{color: #4181BB;
                                padding-bottom: 20px;}"),
@@ -49,12 +52,15 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                font-weight: bold;
                                font-size: 18px;
                                line-height: 1.5em;
+                               margin-top: 5px;
+                               white-space: pre-wrap;
                                }"),
                           HTML("#text3{color: black;
                                font-size: 12px;
                                line-height: 1.5em;
                                border: 2px double white;
                                background-color: white;
+                                margin-top: 5px;
                                padding-right: 2.5%;
                                padding-left:2.5%
                                }"),
@@ -62,16 +68,17 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                font-weight: bold;
                                font-size: 12px;
                                line-height: 1.5em;
+                               margin-top: 5px;
                                }"),
                           HTML("#basic1 {
                             border: 2px double white;
                             background-color: #E5F1FC;}"),
-                          HTML("#lab {
+                          HTML("#lab1 {
                             border: 2px double white;
                             background-color: #E5F1FC;}")
-                          )
+                        )
                       ), 
-
+                      
                       # App title ----
                       h1(id="big-heading" ,"Risk prediction calculator for renal decline in individuals with type 2 diabetes mellitus"),
                       # Sidebar layout with input and output definitions ----
@@ -79,79 +86,72 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                       fluidRow(useShinyjs(),
                                tags$head(
                                  tags$style(type="text/css", 
-                                 "label{ display: table-cell; text-align: left; vertical-align: middle; } 
-                                            .form-group { display: table-row;}
-                                 .form-control.shiny-bound-input, 
-                                 .selectize-input {height: 20px; margin-bottom:2 px; margin-top: 2px;}
+                                 ".form-control.shiny-bound-input, 
+                                 .selectize-input {height: 25px; margin-bottom:2 px; margin-top: 2px;}
                                  .checkbox-inline, .radio-inline {margin-bottom: 2px; margin-top: 2px;}")
                                ),
-                        column(2,id="basic1", style='padding:20px;',
-                        # Sidebar panel for inputs ----
-                        radioButtons("add_pred", "Model:  ", 
-                                     choices = c("Simple" = 1, 
-                                                 "Extended" = 2),
-                                     selected = 1, inline = T),
-                        h4(" ------------------------------------------- "),
-                        h4(id="text2","Demographics:"),
-                          # Input: Slider for the number of bins ----
-                          radioButtons("BL_sex", "Sex:  ",
-                                      c("female"=1, "male"=0), inline=T),
-                          numericInput("BL_age", "Age, years:  ", 
-                                       value=67, min=18, max=75,width="10%"),
-                          radioButtons("BL_smoking", "Smoking status:  ",
-                                      choices = c("never"=0, "ever"=1),
-                                      inline=T),
-                          numericInput("BL_bmi", "BMI (kg/m2):  ", 
-                                       value=36, min=11, max=40,width="10%"),
-                        h4(" ------------------------------------------- "),
-                        h4(id="text2","Medication intake:"),
-                        checkboxInput("BL_med_bp", "Blood pressure-lowering"),
-                        checkboxInput("BL_med_lipid", "Lipid-lowering"),
-                        checkboxInput("BL_med_dm", "Glucose-lowering"),
-                        h4(" ------------------------------------------- "),
-                        numericInput("BL_eGFR", "Baseline eGFR = ",value=54, min=30, max=145,width="10%")),
-                        column(2, 
-                               id="basic1",
-                               shinyjs::hidden(
-                                 
-                          fluidRow(id="lab",
-                                   
-                                          h4(id="text2", "Laboratory:"),
-                                          numericInput("BL_hemo", "Hemoglobin (g/dL):",value=85, min=50, max=105), 
-                                          numericInput("BL_diabp", "Diastolic blood pressure:",value=85, min=50, max=105),
-                                          numericInput("BL_sysbp", "Systolic blood pressure:", value=85, min=100, max=190),
-                                          numericInput("BL_hba1c", "Hba1C (mmol/mol):", value=61.7, min=33.3, max=93),
-                                          numericInput("BL_serumchol", "Serum Cholesterol (mg/dL)", value=131, min=99, max=328),
-                                          numericInput("BL_uacr", "Urinary albumin-creatinine ratio (mg/g):", value=10, min=0.05, max=2549))
-                                 )
+                               column(2,id="basic1", style='padding:20px;',
+                                      # Sidebar panel for inputs ----
+                                      h5(radioButtons("add_pred", "Model:  ", 
+                                                   choices = c("Simple" = 1, 
+                                                               "Extended" = 2),
+                                                   selected = 1, inline = T)),
+                                      h4(" -------------------------------- "),
+                                      h4(id="text2","Demographics:"),
+                                      # Input: Slider for the number of bins ----
+                                      h5(prettyRadioButtons("BL_sex", "Sex:",
+                                                   c("female"=1, "male"=0), inline=T, shape = "square")),
+                                      h5(numericInputIcon("BL_age", "Age, years:", value=67, min=18, max=75)),
+                                      h5(numericInputIcon("BL_bmi", "BMI (kg/m2):", value=36, min=11, max=40)),
+                                      h5(prettyRadioButtons("BL_smoking", "Smoking status:",
+                                                   choices = c("never"=0, "ever"=1),inline=T,shape = "square")),
+
+                                      h4(" -------------------------------- "),
+                                      h4(id="text2","Medication intake:"),
+                                      prettyCheckbox("BL_med_bp", "Blood pressure-lowering"),
+                                      prettyCheckbox("BL_med_lipid", "Lipid-lowering"),
+                                      prettyCheckbox("BL_med_dm", "Glucose-lowering"),
+                                      h4(" -------------------------------- "),
+                                      h5(numericInput("BL_eGFR", "Baseline eGFR = ",value=54, min=30, max=145, width="50%"))
+                                      ),
+                               column(2,
+                                      shinyjs::hidden(
+                                        fluidRow(id="lab1",
+                                                 h4(id="text2", "Laboratory:"),
+                                                 h5(div(style="margin:5px;",numericInput("BL_hemo", "Hemoglobin (g/dL):",value=85, min=50, max=105))), 
+                                                 h5(div(style="margin:5px;",numericInput("BL_diabp", "Diastolic blood pressure:",value=85, min=50, max=105))),
+                                                 h5(div(style="margin:5px;",numericInput("BL_sysbp", "Systolic blood pressure:", value=85, min=100, max=190))),
+                                                 h5(div(style="margin:5px;",numericInput("BL_hba1c", "Hba1C (mmol/mol):", value=61.7, min=33.3, max=93))),
+                                                 h5(div(style="margin:5px;",numericInput("BL_serumchol", "Serum Cholesterol (mg/dL)", value=131, min=99, max=328))),
+                                                 h5(div(style="margin:5px;",numericInput("BL_uacr", "Urinary albumin-creatinine ratio (mg/g):", value=10, min=0.05, max=2549)))
+                                                 )
+                                      )),
+                               
+                               # Main panel for displaying outputs ----
+                               column(8,
+                                      h4(id="text2", "Outcome Prediction"),
+                                      
+                                      # Output: Histogram ----
+                                      tabsetPanel(
+                                        tabPanel("Risk", 
+                                                 h4(id="text1", textOutput("text_risk1")),
+                                                 h4(id="text1", textOutput("text_risk2")),
+                                                 plotOutput("plot_risk", height="400px", width="400px")),
+                                        tabPanel("Longitudinal",
+                                                 h4(id="text1", textOutput("text_longitudinal")),
+                                                 plotOutput("plot_trajectory", height="500px", width="700px")),
+                                        tabPanel("Data", 
+                                                 h4(id="text2", "Provided patient information:"),
+                                                 tableOutput("table_new"),
+                                                 h4(id="text2", "Predicted eGFR per time point"),
+                                                 tableOutput("table_pred"))
+                                        
+                                      )
                                ),
-                        
-                        # Main panel for displaying outputs ----
-                        column(8,
-                          h4(id="text2", "Outcome Prediction"),
-                          
-                          # Output: Histogram ----
-                          tabsetPanel(
-                            tabPanel("Risk", 
-                                     h4(id="text1", textOutput("text_risk1")),
-                                     h4(id="text1", textOutput("text_risk2")),
-                                     plotOutput("plot_risk", height="400px", width="400px")),
-                            tabPanel("Longitudinal",
-                                     h4(id="text1", textOutput("text_longitudinal")),
-                                     plotOutput("plot_trajectory", height="500px", width="700px")),
-                            tabPanel("Data", 
-                                     h4(id="text2", "Provided patient information:"),
-                                     tableOutput("table_new"),
-                                     h4(id="text2", "Predicted eGFR per time point"),
-                                     tableOutput("table_pred"))
-                  
-                          )
-                        ),
                       ),
                       fluidRow(
                         column(4,align="center",
-                               h4("Cutpoint for stable and fast renal decline:"),
-                               numericInput("cutpoint", "", value=-3, min=-5, max=0)),
+                               h5(div(style="margin-bottom:-5px;width=400px", numericInput("cutpoint", "Cutpoint for stable and fast progression", value=-3, min=-5, max=0)))),
                         column(8,)),
                       fluidRow(
                         column(2, align="right", actionButton("goButton", "Compute")),
