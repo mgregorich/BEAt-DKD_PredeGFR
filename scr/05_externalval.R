@@ -47,11 +47,11 @@ plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==7,]$FU_eGFR_e
 
 
 # Model performance and validation
-tbl_tmp <- lapply(unique(data.diacore.new$Time), function(x) eval_preds(pred=data.diacore.new[data.diacore.new$Time==x,]$pred, 
+tbl_tmp <- lapply(sort(unique(data.diacore.new$Time)), function(x) eval_preds(pred=data.diacore.new[data.diacore.new$Time==x,]$pred, 
                                                                  obs=data.diacore.new[data.diacore.new$Time==x,]$FU_eGFR_epi, 
                                                                  N=length(unique(risk_model$data$PatID)), 
                                                                  k=sum(anova(risk_model)$numDF)))
-tbl_performance <- data.frame("Time"=unique(data.diacore.new$Time),round(do.call(rbind, tbl_tmp),3))
+tbl_performance <- data.frame("Time"=sort(unique(data.diacore.new$Time)),round(do.call(rbind, tbl_tmp),3))
 write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval.xlsx"), 
            overwrite = TRUE)
 

@@ -5,7 +5,7 @@
 ###################################################
 
 rm(list=ls())
-
+set.seed(12345)
 # Initialise global values
 
 source("scr/setup.R")
@@ -25,6 +25,6 @@ source("scr/03_model.R", print.eval=F)
 source("scr/04_eval.R", print.eval=F)
 
 # External validation
-source("scr/05_extval.R", print.eval=F)
+source("scr/05_externalval.R", print.eval=F)
 
 
