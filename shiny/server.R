@@ -8,7 +8,7 @@ pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidy
 source("functions_aux.R")
 
 # ---------------------------- SHINY Server --------------------------
-risk_model <- readRDS("risk_model.rds")
+risk_model <- readRDS("riskpred_model.rds")
 
 plot_trajectory <- function(x){
   #df.melt <- melt(x[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.low", "pred.upp")], id.vars = c("PatID","Time", "pred.low", "pred.upp"))
