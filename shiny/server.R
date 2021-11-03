@@ -71,9 +71,9 @@ shinyServer(function(input, output, session) {
 
   observeEvent(input$add_pred, {
     if(input$add_pred == 2){
-      show(id = "lab1")
+      shinyjs::show(id = "lab1")
     }else{
-      hide(id = "lab1")}})
+      shinyjs::hide(id = "lab1")}})
 
   
   inputdata <- eventReactive(input$goButton, {
