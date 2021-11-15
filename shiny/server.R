@@ -4,11 +4,18 @@
 # Info: server file - shiny
 ################################
 
+
+data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=55,
+                       BL_age=69, BL_sex=1, BL_bmi=24, BL_smoking=1,BL_hemo=14, BL_hba1c=62,BL_serumchol=130, BL_map=calc_map(sys=125,dia=85),
+                       BL_uacr_log2=log(10,2),BL_med_dm=1, BL_med_bp=1, BL_med_lipid=1)
+
+
 pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png)
 source("functions_aux.R")
 
 # ---------------------------- SHINY Server --------------------------
 risk_model <- readRDS("riskpred_model.rds")
+
 
 plot_trajectory <- function(x){
   #df.melt <- melt(x[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.low", "pred.upp")], id.vars = c("PatID","Time", "pred.low", "pred.upp"))
@@ -28,6 +35,7 @@ calc_map <- function(sys, dia){
   map <- (sys+ 2*dia)/3
   return(map)
 }
+
 
 smilegraph <- function(risk){
   happy<-readPNG("happy.png")
@@ -74,19 +82,10 @@ shinyServer(function(input, output, session) {
       shinyjs::show(id = "lab1")
     }else{
       shinyjs::hide(id = "lab1")}})
-
   
-  inputdata <- eventReactive(input$goButton, {
+  
+  inputdata <- eventReactive(input$goButton ,{
     if(input$add_pred==2){
-          data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=input$BL_eGFR,
-                           BL_age=input$BL_age, 
-                           BL_sex=as.numeric(input$BL_sex), 
-                           BL_bmi=input$BL_bmi, 
-                           BL_smoking=as.numeric(input$BL_smoking),
-                           BL_hemo=input$BL_hemo, BL_hba1c=input$BL_hba1c, BL_serumchol=input$BL_serumchol, BL_map=calc_map(sys=input$BL_sysbp,dia=input$BL_diabp),
-                           BL_uacr_log2=log(input$BL_uacr,2),
-                           BL_med_dm=input$BL_med_dm*1, BL_med_bp=input$BL_med_bp*1, BL_med_lipid=input$BL_med_lipid*1)
-    }else{
       data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=input$BL_eGFR,
                              BL_age=input$BL_age, 
                              BL_sex=as.numeric(input$BL_sex), 
@@ -95,30 +94,41 @@ shinyServer(function(input, output, session) {
                              BL_hemo=input$BL_hemo, BL_hba1c=input$BL_hba1c, BL_serumchol=input$BL_serumchol, BL_map=calc_map(sys=input$BL_sysbp,dia=input$BL_diabp),
                              BL_uacr_log2=log(input$BL_uacr,2),
                              BL_med_dm=input$BL_med_dm*1, BL_med_bp=input$BL_med_bp*1, BL_med_lipid=input$BL_med_lipid*1)
+    }else{
+      data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=input$BL_eGFR,
+                             BL_age=input$BL_age, 
+                             BL_sex=as.numeric(input$BL_sex), 
+                             BL_bmi=input$BL_bmi, 
+                             BL_smoking=as.numeric(input$BL_smoking),
+                             BL_hemo=input$BL_hemo, BL_hba1c=input$BL_hba1c, BL_serumchol=input$BL_serumchol, BL_map=calc_map(sys=input$BL_sysbp,dia=input$BL_diabp),
+                             BL_uacr_log2=log(input$BL_uacr,2),
+                             BL_med_dm=0, BL_med_bp=0, BL_med_lipid=0)
     }
-
+    
     
     data.new
   })
   
-  calc_out <- eventReactive(input$goButton, {
-
+  
+  calc_out <- eventReactive(input$goButton,{
+    
     data.new=inputdata()
     slope.cutpoint <- input$cutpoint
     
     res <- LongPred_ByBase(risk_model, newdata = data.new,  
-                    cutpoint = slope.cutpoint,
-                    timeVar = "Time", idVar="PatID", idVar2="Country",
-                    times = seq(1,7,1), 
-                    all_times=T)
+                           cutpoint = slope.cutpoint,
+                           timeVar = "Time", idVar="PatID", idVar2="Country",
+                           times = seq(1,7,1), 
+                           all_times=T)
     data.long <- data.new[rep(1,8),]
     data.long$Time <- seq(0,7,1)
     data.pred <- full_join(data.long,
                            res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")],
                            by=c("PatID", "Time"))
-    data.pred <-res$Pred
+    data.pred[data.pred$Time==0,]$pred <- input$BL_eGFR
     data.pred
   })
+  
   
   
   # ---------- Execute --------------------------------------------------------
@@ -138,8 +148,6 @@ shinyServer(function(input, output, session) {
   
   plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"prob.prog"]*100,2))})
   
-  
-
   
   # ------- Output ------------------------------
   output$text_risk1 <- renderText({
@@ -186,7 +194,7 @@ shinyServer(function(input, output, session) {
     updateNumericInput(session, "BL_diabp", value = 85)
     updateNumericInput(session, "BL_hemo", value = 15)
     updateNumericInput(session, "BL_uacr", value = 10)
-    updateNumericInput(session, "BL_eGFR", value = 55)
+    updateNumericInput(session, "BL_eGFR", value = 70)
 
     updateCheckboxInput(session, "BL_med_bp", value=F)
     updateCheckboxInput(session, "BL_med_dm", value=T)
@@ -196,4 +204,4 @@ shinyServer(function(input, output, session) {
   })
 })
   
- 
+

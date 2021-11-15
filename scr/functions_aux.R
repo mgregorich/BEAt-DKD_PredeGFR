@@ -139,7 +139,7 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # Specify to try the function
   # lmeObject = fit.final
   # newdata = data.full.t0
-  # timeVar = "Time_exact"
+  # timeVar = "Time"
   # idVar <- "PatID"
   # idVar2="Country"
   # times = seq(1,8,1)
@@ -150,13 +150,14 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # M=100
   # seed=123
   # 
-  # lmeObject=fit.lme;
-  # newdata = data.test.t0;
+  # lmeObject=risk_model; 
+  # newdata = data.diacore.t0; 
   # cutpoint = slope_cutpoint;
-  # timeVar = "Time_exact"; idVar="PatID"; idVar2="Country";
-  # times =unique(data.full$Time)[-1];
+  # timeVar = "Time"; idVar="PatID"; idVar2="Country";
+  # times =sort(unique(data.diacore$Time_cat)); 
   # all_times=F
 
+  
   # ---- Assign elements of lme to objects
   data <- lmeObject$data
   formYx <- formula(lmeObject)
@@ -222,7 +223,7 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   Z_2_new_pred <- sapply(model.frame(formula("~ Country"), data=newdata_pred)[,1], function(x) Z2.icpt[Z2.icpt$country %in% x,2])
   
   
-  # ------ Compute random coeffs with baseline value; assumes country is known
+  # ------ Compute random coeffs with baseline value; assumes country is unknown
   b <- matrix(0.0, n, ncol(Z_new))
   post_vars <- DZtVinv <- vector("list", n)
   for (i in seq_len(n)) {
@@ -352,8 +353,8 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # ------Output
   # Predictions + CI
   out_data <- rbind(newdata, newdata_pred)
-  out_data$Time <- out_data$Time_exact
   out_data$pred <- c(fitted_y, y_hat_time)
+  out_data$Time_cat <- out_data$Time
   out_data$prior.pred <- c(pred_y_i0, pred_y_it)
   out_data$pred.low <- c(rep(NA, length(pred_y_i0)), low)
   out_data$pred.upp <- c(rep(NA, length(pred_y_i0)), upp)

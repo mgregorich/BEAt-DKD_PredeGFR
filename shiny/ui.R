@@ -118,7 +118,7 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                       shinyjs::hidden(
                                         fluidRow(id="lab1",
                                                  h4(id="text2", "Laboratory:"),
-                                                 h5(div(style="margin:5px;",numericInput("BL_hemo", "Hemoglobin (g/dL):",value=85, min=50, max=105))), 
+                                                 h5(div(style="margin:5px;",numericInput("BL_hemo", "Hemoglobin (g/dL):",value=15, min=10, max=18))), 
                                                  h5(div(style="margin:5px;",numericInput("BL_diabp", "Diastolic blood pressure:",value=85, min=50, max=105))),
                                                  h5(div(style="margin:5px;",numericInput("BL_sysbp", "Systolic blood pressure:", value=85, min=100, max=190))),
                                                  h5(div(style="margin:5px;",numericInput("BL_hba1c", "Hba1C (mmol/mol):", value=61.7, min=33.3, max=93))),

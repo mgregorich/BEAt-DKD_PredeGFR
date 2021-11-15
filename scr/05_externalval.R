@@ -8,25 +8,23 @@
 rm(list=ls())
 
 source("scr/setup.R")
-
-
-# ------- Start the fun
-# Data preparation
 source("scr/01_dataprep.R", print.eval=F)
 
 # ------------ Model validation ---------------------------
 risk_model <- readRDS(file.path(out.path, "riskpred_model.rds"))
 
-data.diacore.t0 <- data.frame(data.diacore[data.diacore$Time==0,])
+data.diacore$Time <- data.diacore$Time_cont
+data.diacore.t0 <- data.frame(data.diacore[data.diacore$Time_cat==0,])
 data.diacore.t0$Country <- "Unknown"
 res <- LongPred_ByBase(lmeObject=risk_model, 
                        newdata = data.diacore.t0, 
                        cutpoint = slope_cutpoint,
-                       timeVar = "Time_exact", idVar="PatID", idVar2="Country",
-                       times =unique(data.diacore$Time), 
-                       all_times=T)
+                       timeVar = "Time", idVar="PatID", idVar2="Country",
+                       times =sort(unique(data.diacore$Time_cat)), 
+                       all_times=F)
 
 # Summarize and prepare output
+data.diacore$Time <- round(data.diacore$Time,0)
 data.diacore.new <- full_join(data.diacore, res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
 
 
