@@ -5,3 +5,4 @@
 
 renv/
 risk_model.rds
+riskpred_model.rds

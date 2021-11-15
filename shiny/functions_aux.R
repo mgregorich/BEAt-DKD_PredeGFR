@@ -97,6 +97,17 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # interval="prediction"
   # M=100
   # seed=123
+  
+  # lmeObject =risk_model; newdata = data.new;
+  # cutpoint = -3;
+  # timeVar = "Time"; idVar="PatID"; idVar2="Country";
+  # times = seq(1,7,1);
+  # all_times=F;
+  # level = 0.95
+  # cutpoint=-3
+  # interval="prediction"
+  # M=100
+  # seed=123
 
   # ---- Assign elements of lme to objects
   data <- lmeObject$data
@@ -294,6 +305,7 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # Predictions + CI
   out_data <- rbind(newdata, newdata_pred)
   out_data$pred <- c(fitted_y, y_hat_time)
+  out_data$Time_cat <- out_data$Time
   out_data$prior.pred <- c(pred_y_i0, pred_y_it)
   out_data$pred.low <- c(rep(NA, length(pred_y_i0)), low)
   out_data$pred.upp <- c(rep(NA, length(pred_y_i0)), upp)

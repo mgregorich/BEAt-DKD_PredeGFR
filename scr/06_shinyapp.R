@@ -1,7 +1,9 @@
+rm(list=ls())
+source("scr/setup.R")
+
 # Copy necessary data
 file.copy(file.path(out.path, "riskpred_model.rds"), 
           file.path(shiny.path, "riskpred_model.rds"))
 
 # Run app in Rstudio from correct directory
-rm(list=ls())
 runApp(shiny.path)

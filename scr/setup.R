@@ -4,7 +4,7 @@
 ###################################################
 
 
-pacman::p_load(tidyr, plyr, reshape2, ggplot2, openxlsx, stringr, transplantr, skimr,
+pacman::p_load(tidyr, plyr, reshape2, ggplot2, openxlsx, stringr, transplantr, skimr,shiny,
                lme4, readxl, purrr, janitor, tableone, dplyr, splitstackshape,
                nlme, lmerTest, MuMIn, JMbayes, splines, rms, Hmisc, concreg, caret, MASS, performance,
                pmsampsize, broom)
@@ -20,7 +20,7 @@ PROVALID.path = paste0(data.path, "PROVALID/")
 DIACORE.path = paste0(data.path, "DIACORE/")
 
 out.path = "../Output/"
-shiny.path = "./shiny/"
+shiny.path = "./shiny"
 slope_cutpoint=-3
 
 # Load auxiliary functions 

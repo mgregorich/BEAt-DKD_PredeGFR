@@ -17,19 +17,19 @@ source("scr/01_dataprep.R", print.eval=F)
 # ----------------------------- Model development ------------------------------
 ################################################################################
 
-
-fit.final <- lme(fixed=FU_eGFR_epi ~ (Time_exact + Time_exact  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+data.full$Time <- data.full$Time_cont
+fit.final <- lme(fixed=FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
-               random=list(~1|Country,~1+Time_exact|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
+               random=list(~1|Country,~1+Time|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
 
 
 # UPDATE prediction with BL value
 data.full.t0 <- data.full[data.full$Time==0,]
 data.full.t0$Country <- "Unknown"
-res <- LongPred_ByBase(lmeObject=fit.final, newdata = data.full.t0, timeVar = "Time_exact", idVar="PatID", idVar2="Country",
-                       times = unique(data.full$Time)[-1], all_times=F)
+res <- LongPred_ByBase(lmeObject=fit.final, newdata = data.full.t0, timeVar = "Time", idVar="PatID", idVar2="Country",
+                       times = unique(data.full$Time_cat)[-1], all_times=F)
+data.full$Time <- round(data.full$Time,0)
 data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
-
 
 # Before update
 plot_calibration_cont(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$prior.pred, time=1)
@@ -59,6 +59,7 @@ summary(fit.final$coefficients$random$PatID[,2])
 fit.final$coefficients$fixed
 data.full$resid <- residuals(fit.final)
 saveRDS(fit.final, paste0(out.path,"riskpred_model.rds"))
+#saveRDS(fit.final, paste0(shiny.path,"/riskpred_model.rds"))
 
 
 
@@ -108,9 +109,9 @@ for(i in 1:f){
   data.train <- data.full[data.full$fold != i, ] 
   data.test <- data.full[data.full$fold == i, ] 
  
-  fit.lme <- lme(fixed=FU_eGFR_epi ~ (Time_exact + Time_exact * (BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+  fit.lme <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
-                 random=list(~1|Country,~1+Time_exact|PatID), data=data.train, control=lmeControl(opt = "optim", maxIter = 200), method = "ML")
+                 random=list(~1|Country,~1+Time|PatID), data=data.train, control=lmeControl(opt = "optim", maxIter = 200), method = "ML")
   
   # Update prediction with BL value
   data.test.t0 <- data.test[data.test$Time==0,]
@@ -118,11 +119,12 @@ for(i in 1:f){
   res <- LongPred_ByBase(lmeObject=fit.lme, 
                          newdata = data.test.t0, 
                          cutpoint = slope_cutpoint,
-                         timeVar = "Time_exact", idVar="PatID", idVar2="Country",
-                         times =unique(data.full$Time)[-1], 
+                         timeVar = "Time", idVar="PatID", idVar2="Country",
+                         times =unique(data.full$Time_cat)[-1], 
                          all_times=F)
   
   # Summarize and prepare output
+  data.test$Time <- round(data.test$Time,0)
   data.test.new <- full_join(data.test, res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
   data.test.new$fold <- i
   data.test.new$Country <- data.test$Country[1]
