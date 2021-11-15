@@ -8,7 +8,7 @@ pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidy
 source("functions_aux.R")
 
 # ---------------------------- SHINY Server --------------------------
-risk_model <- readRDS("risk_model.rds")
+risk_model <- readRDS("riskpred_model.rds")
 
 plot_trajectory <- function(x){
   #df.melt <- melt(x[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.low", "pred.upp")], id.vars = c("PatID","Time", "pred.low", "pred.upp"))
@@ -71,9 +71,9 @@ shinyServer(function(input, output, session) {
 
   observeEvent(input$add_pred, {
     if(input$add_pred == 2){
-      show(id = "lab1")
+      shinyjs::show(id = "lab1")
     }else{
-      hide(id = "lab1")}})
+      shinyjs::hide(id = "lab1")}})
 
   
   inputdata <- eventReactive(input$goButton, {
