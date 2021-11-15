@@ -5,9 +5,10 @@
 ################################
 
 
-data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=55,
-                       BL_age=69, BL_sex=1, BL_bmi=24, BL_smoking=1,BL_hemo=14, BL_hba1c=62,BL_serumchol=130, BL_map=calc_map(sys=125,dia=85),
-                       BL_uacr_log2=log(10,2),BL_med_dm=1, BL_med_bp=1, BL_med_lipid=1)
+
+# data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=55,
+#                        BL_age=69, BL_sex=1, BL_bmi=24, BL_smoking=1,BL_hemo=14, BL_hba1c=62,BL_serumchol=130, BL_map=calc_map(sys=125,dia=85),
+#                        BL_uacr_log2=log(10,2),BL_med_dm=1, BL_med_bp=1, BL_med_lipid=1)
 
 
 pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png)
@@ -125,7 +126,10 @@ shinyServer(function(input, output, session) {
     data.pred <- full_join(data.long,
                            res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")],
                            by=c("PatID", "Time"))
+<<<<<<< HEAD
     data.pred[data.pred$Time==0,]$pred <- input$BL_eGFR
+=======
+>>>>>>> 2cb2e5d03246c82b439df51943384441cd33b7a6
     data.pred
   })
   
