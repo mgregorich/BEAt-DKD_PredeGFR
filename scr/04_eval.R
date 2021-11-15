@@ -13,7 +13,7 @@ tbl_tmp <- lapply(unique(data.full$Time), function(x) eval_preds(pred=df.preds[d
                                                                  obs=df.preds[df.preds$Time==x,]$FU_eGFR_epi, 
                                                                  N=length(unique(fit.final$data$PatID)), 
                                                                  k=sum(anova(fit.final)$numDF)))
-tbl_performance <- data.frame("Time"=seq(0,7,1),round(do.call(rbind, tbl_tmp),3))
+tbl_performance <- data.frame("Time"=seq(0,8,1),round(do.call(rbind, tbl_tmp),3))
 # tbl_performance$C <- round(sapply(0:7, function(x) mean(df.stats[df.stats$Time==x,]$C, na.rm=T)),3)
 write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"), 
            overwrite = TRUE)
@@ -61,6 +61,7 @@ which.max(abs(fit.final$coefficients$random$PatID[,2]))
 set.seed(666)
 df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.low", "pred.upp")], id.vars = c("PatID","Time", "pred.low", "pred.upp"))
 df.melt.small <- df.melt[df.melt$PatID %in% c(sample(unique(df.melt$PatID),16)),]
+df.melt.small$Time <- as.numeric(df.melt.small$Time)
 
 ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   geom_ribbon(aes(x=Time, ymax=pred.upp, ymin=pred.low), fill="blue", alpha=.05) +
@@ -68,7 +69,7 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   geom_line(data=df.melt.small[!is.na(df.melt.small$value),], aes(color=variable)) +
   scale_linetype_manual(values=c("solid", "solid", "dashed", "dashed")) +
   scale_color_manual(values=c("black", "blue", "red", "red"), labels=c("Observed", "Predicted", "95% CI", "95% CI")) +
-  scale_x_continuous(expand=c(0,0),breaks = seq(0,7,1), limits = c(0,7)) +
+  scale_x_continuous(expand=c(0,0),breaks = seq(0,8,1), limits = c(0,8)) +
   scale_y_continuous(expand=c(0,0), "eGFR") +
   ggtitle("") +
   theme_bw() +
@@ -77,9 +78,10 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev.png"),width=10, height=6)
 
 # ---- subject specific trajectories, comparing updated and no-update predictions
-df.melt_0 <- melt(df.preds_0[,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
+df.melt_0 <- melt(df.preds[df.preds$Time==0,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
 df.melt.small_0 <- df.melt_0[df.melt_0$PatID %in% unique(df.melt.small$PatID), ]
 df.melt.small_0$variable = "pred_0"
+df.melt.small_0$Time <- as.numeric(df.melt.small_0$Time)
 df.melt.small_0 <- rbind(df.melt.small[, c("PatID", "Time", "variable", "value")], 
                          df.melt.small_0)
 
@@ -195,3 +197,4 @@ ggsave(paste0(out.path, "fig_prob_progression_",abs(slope_cutpoint),"_dev.png"),
 summary(df.preds.t0$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==0,]$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==1,]$prob.prog)
+

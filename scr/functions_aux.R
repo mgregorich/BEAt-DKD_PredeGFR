@@ -20,21 +20,35 @@ c_index <- function(pred, obs, N, k){
 }
 
 eval_preds <- function(pred, obs, N=NULL, k=NULL){
+  # x=data.test.list[[8]]; pred=x$pred; obs=x$FU_eGFR_epi; N=length(unique(fit.lme$data$PatID)); k=sum(anova(fit.lme)$numDF)
+  
   df <- data.frame(pred=pred, obs=obs)
   df <- df[complete.cases(df),]
   
   r2 <- cor(pred,obs, use="pairwise.complete.obs")^2
   CS <- ifelse(all(is.na(df$obs)),NA, lm(df$obs ~ df$pred)$coefficients[2])
-  Cind <- ifelse(all(is.na(df$obs)),NA,c_index(pred=df$pred, obs=df$obs))
+  if(nrow(df)>5){
+    Cind <- ifelse(all(is.na(df$obs)),NA,c_index(pred=df$pred, obs=df$obs))
+  
+    if(!(is.null(N) | is.null(k))) {r2 <- 1-(((1-r2)*(N-1))/(N-k-1))}
+    res <- data.frame(Nobs = sum(!is.na(df$obs)),
+                      R2 = r2,
+                      RMSE = RMSE(df$pred, df$obs),
+                      MAE = MAE(df$pred, df$obs),
+                      CalbinLarge = mean(df$obs)- mean(df$pred),
+                      CalbSlope=CS,
+                      C = Cind)
+  }else{
+    res <- data.frame(Nobs = sum(!is.na(df$obs)),
+                      R2 = r2,
+                      RMSE = RMSE(df$pred, df$obs),
+                      MAE = MAE(df$pred, df$obs),
+                      CalbinLarge = mean(df$obs)- mean(df$pred),
+                      CalbSlope=CS,
+                      C = NA)
+  }
+  
 
-  if(!(is.null(N) | is.null(k))) {r2 <- 1-(((1-r2)*(N-1))/(N-k-1))}
-  res <- data.frame(Nobs = sum(!is.na(df$obs)),
-                    R2 = r2,
-                    RMSE = RMSE(df$pred, df$obs),
-                    MAE = MAE(df$pred, df$obs),
-                    CalbinLarge = mean(df$obs)- mean(df$pred),
-                    CalbSlope=CS,
-                    C = Cind)
   return(res)
 }
 
@@ -125,16 +139,23 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # Specify to try the function
   # lmeObject = fit.final
   # newdata = data.full.t0
-  # timeVar = "Time"
+  # timeVar = "Time_exact"
   # idVar <- "PatID"
   # idVar2="Country"
-  # times = seq(1,7,1)
+  # times = seq(1,8,1)
   # all_times = F
   # level = 0.95
   # cutpoint=-3
   # interval="prediction"
   # M=100
   # seed=123
+  # 
+  # lmeObject=fit.lme;
+  # newdata = data.test.t0;
+  # cutpoint = slope_cutpoint;
+  # timeVar = "Time_exact"; idVar="PatID"; idVar2="Country";
+  # times =unique(data.full$Time)[-1];
+  # all_times=F
 
   # ---- Assign elements of lme to objects
   data <- lmeObject$data
@@ -249,8 +270,8 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   
   
   # ------ eGFR slope per individual
-  dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + c(X_new[,!str_detect(colnames(X_new_pred), "Time|Intercept")] %*% 
-                                                              betas[str_detect(names(betas), paste0(timeVar,":"))]) + c(b.new[,str_detect(colnames(b.new), timeVar)])
+  dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
+                                                              betas[str_detect(names(betas), paste0(timeVar,":"))]) + c(b.new[,str_detect(colnames(b.new), "Time")])
   
   
   # ------- Confidence/Prediction interval for Y 
@@ -301,7 +322,7 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
       mean_m <- c(X_new_pred %*% betas_m) + 
         rowSums(Z_new_pred * b_m[id_pred, , drop = FALSE]) + Z_2_new_pred
       dmean_m <- betas_m[str_detect(names(betas_m), paste0(timeVar,"$"))] + 
-        c(X_new_pred[,!str_detect(colnames(X_new_pred), "Time|Intercept")] %*% betas_m[str_detect(names(betas_m), paste0(timeVar,":"))]) + 
+        c(X_new_pred[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% betas_m[str_detect(names(betas_m), paste0(timeVar,":"))]) + 
         c(b_m[id_pred,str_detect(colnames(b_m), timeVar)])
       
       sampled_y[, m] <- rnorm(n_pred, mean_m, lmeObject$sigma)
@@ -331,6 +352,7 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # ------Output
   # Predictions + CI
   out_data <- rbind(newdata, newdata_pred)
+  out_data$Time <- out_data$Time_exact
   out_data$pred <- c(fitted_y, y_hat_time)
   out_data$prior.pred <- c(pred_y_i0, pred_y_it)
   out_data$pred.low <- c(rep(NA, length(pred_y_i0)), low)

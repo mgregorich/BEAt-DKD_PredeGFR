@@ -7,12 +7,12 @@
 
 rm(list=ls())
 
-source("setup.R")
+source("scr/setup.R")
 
 
 # ------- Start the fun
 # Data preparation
-source("01_dataprep.R", print.eval=F)
+source("scr/01_dataprep.R", print.eval=F)
 
 # ------------ Model validation ---------------------------
 risk_model <- readRDS(file.path(out.path, "riskpred_model.rds"))
@@ -22,8 +22,8 @@ data.diacore.t0$Country <- "Unknown"
 res <- LongPred_ByBase(lmeObject=risk_model, 
                        newdata = data.diacore.t0, 
                        cutpoint = slope_cutpoint,
-                       timeVar = "Time", idVar="PatID", idVar2="Country",
-                       times =unique(data.diacore$Time)[-1], 
+                       timeVar = "Time_exact", idVar="PatID", idVar2="Country",
+                       times =unique(data.diacore$Time), 
                        all_times=T)
 
 # Summarize and prepare output
@@ -31,18 +31,27 @@ data.diacore.new <- full_join(data.diacore, res$Pred[,c("PatID", "Time","pred", 
 
 
 # Calibration plot
-plot_calibration(yobs=data.diacore.new[data.diacore.new$Time==1,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==1,]$pred, 
-                 cohort="extval", time=1, save=T, out.path = out.path)
-plot_calibration(yobs=data.diacore.new[data.diacore.new$Time==2,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==2,]$pred, 
+
+plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==2,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==2,]$pred, 
                  cohort="extval", time=2, save=T, out.path = out.path)
+plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==3,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==3,]$pred, 
+                      cohort="extval", time=3, save=T, out.path = out.path)
+plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==4,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==4,]$pred, 
+                      cohort="extval", time=4, save=T, out.path = out.path)
+plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==5,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==5,]$pred, 
+                      cohort="extval", time=5, save=T, out.path = out.path)
+plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==6,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==6,]$pred, 
+                      cohort="extval", time=6, save=T, out.path = out.path)
+plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==7,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==7,]$pred, 
+                      cohort="extval", time=7, save=T, out.path = out.path)
 
 
 # Model performance and validation
-tbl_tmp <- lapply(unique(data.diacore.new$Time), function(x) eval_preds(pred=data.diacore.new[data.diacore.new$Time==x,]$pred, 
+tbl_tmp <- lapply(sort(unique(data.diacore.new$Time)), function(x) eval_preds(pred=data.diacore.new[data.diacore.new$Time==x,]$pred, 
                                                                  obs=data.diacore.new[data.diacore.new$Time==x,]$FU_eGFR_epi, 
                                                                  N=length(unique(risk_model$data$PatID)), 
                                                                  k=sum(anova(risk_model)$numDF)))
-tbl_performance <- data.frame("Time"=unique(data.diacore.new$Time),round(do.call(rbind, tbl_tmp),3))
+tbl_performance <- data.frame("Time"=sort(unique(data.diacore.new$Time)),round(do.call(rbind, tbl_tmp),3))
 write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval.xlsx"), 
            overwrite = TRUE)
 
@@ -78,3 +87,4 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_diacore_extval.png"),width=10, height=6)
+

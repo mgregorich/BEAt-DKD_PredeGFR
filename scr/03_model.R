@@ -8,9 +8,9 @@
 
 # -------- Data preparation, initial data analysis and general functions
 
-# rm(list = ls())
-# source("scr/setup.R")
-# source("scr/01_dataprep.R", print.eval=F)
+rm(list = ls())
+source("scr/setup.R")
+source("scr/01_dataprep.R", print.eval=F)
 
 
 ################################################################################
@@ -18,15 +18,15 @@
 ################################################################################
 
 
-fit.final <- lme(fixed=FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+fit.final <- lme(fixed=FU_eGFR_epi ~ (Time_exact + Time_exact  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
-               random=list(~1|Country,~1+Time|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
+               random=list(~1|Country,~1+Time_exact|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
 
 
 # UPDATE prediction with BL value
 data.full.t0 <- data.full[data.full$Time==0,]
 data.full.t0$Country <- "Unknown"
-res <- LongPred_ByBase(lmeObject=fit.final, newdata = data.full.t0, timeVar = "Time", idVar="PatID", idVar2="Country",
+res <- LongPred_ByBase(lmeObject=fit.final, newdata = data.full.t0, timeVar = "Time_exact", idVar="PatID", idVar2="Country",
                        times = unique(data.full$Time)[-1], all_times=F)
 data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
 
@@ -44,6 +44,9 @@ plot_calibration_cont(yobs=data.preds[data.preds$Time==2,]$FU_eGFR_epi, yhat=dat
 plot_calibration_cont(yobs=data.preds[data.preds$Time==3,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==3,]$pred, time=3)
 plot_calibration_cont(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==4,]$pred, time=4)
 plot_calibration_cont(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$pred, time=5)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==6,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==6,]$pred, time=6)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==7,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==7,]$pred, time=7)
+plot_calibration_cont(yobs=data.preds[data.preds$Time==8,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==8,]$pred, time=8)
 
 
 # ----- Final model
@@ -105,9 +108,9 @@ for(i in 1:f){
   data.train <- data.full[data.full$fold != i, ] 
   data.test <- data.full[data.full$fold == i, ] 
  
-  fit.lme <- lme(fixed=FU_eGFR_epi ~ (Time + Time * (BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+  fit.lme <- lme(fixed=FU_eGFR_epi ~ (Time_exact + Time_exact * (BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
-                 random=list(~1|Country,~1+Time|PatID), data=data.train, control=lmeControl(opt = "optim", maxIter = 200), method = "ML")
+                 random=list(~1|Country,~1+Time_exact|PatID), data=data.train, control=lmeControl(opt = "optim", maxIter = 200), method = "ML")
   
   # Update prediction with BL value
   data.test.t0 <- data.test[data.test$Time==0,]
@@ -115,9 +118,9 @@ for(i in 1:f){
   res <- LongPred_ByBase(lmeObject=fit.lme, 
                          newdata = data.test.t0, 
                          cutpoint = slope_cutpoint,
-                         timeVar = "Time", idVar="PatID", idVar2="Country",
+                         timeVar = "Time_exact", idVar="PatID", idVar2="Country",
                          times =unique(data.full$Time)[-1], 
-                         all_times=T)
+                         all_times=F)
   
   # Summarize and prepare output
   data.test.new <- full_join(data.test, res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))

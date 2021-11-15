@@ -56,6 +56,7 @@ calcUACR <- function(df){
 
   return(UACR_mgg_adj)
 }
+
 ##############################################################################################
 
 
@@ -97,10 +98,12 @@ data.diacore <- data.diacore %>%
   mutate(BL_uacr_log2 =log(data.diacore$BL_uacr, 2),
          BL_hba1c = (BL_hba1c_perc-2.15) * 10.929) %>%
   mutate_at(vars(BL_med_bp, BL_med_dm, BL_med_lipid), ~as.factor(.)) %>%
-  filter(!(is.na(FU_eGFR_epi) & (Time %in% c(1,2))))
+  filter(!(is.na(FU_eGFR_epi) & (Time %in% c(1,2)))) %>%
+  mutate(Time_exact=0)
 
-
-
+data.diacore$Time_exact=ifelse((data.diacore$Time==1), round(difftime(data.diacore$FU1_date,data.diacore$FU0_date,units="days")/365.25,3), data.diacore$Time_exact)
+data.diacore$Time_exact=ifelse((data.diacore$Time==2), round(difftime(data.diacore$FU2_date,data.diacore$FU0_date,units="days")/365.25,3), data.diacore$Time_exact)
+data.diacore$Time= round(data.diacore$Time_exact)
 
 ## GCKD
 data.gckd <- read_excel(paste0(GCKD.path, "Datenanfrage2_export_20210625.xlsx"))
@@ -154,8 +157,9 @@ data.gckd.date <- data.gckd %>%
 
 
 data.gckd <- right_join(data.gckd, left_join(data.gckd.long, data.gckd.date, by=c("PatID","Time")), by="PatID")
-
-
+data.gckd <- data.gckd %>% 
+  mutate(Time_exact = round(difftime(FU_date,BL_ein_visdat,units="days")/365.25,3))
+data.gckd$Time <- round(data.gckd$Time_exact)
 
 ## PROVALID
 file = paste0(PROVALID.path, "PROVALID BASE Final Data Export_Clinical_LocalLab_Endpoints_20200119.xls")
@@ -181,6 +185,7 @@ data.tmp1 <- read_excel(file, sheet=1)[,c(clin.cols, gluc.meds, bp.meds, lip.med
 data.tmp1$BL_med_dm <- apply(data.tmp1[,gluc.meds],1, function(x) any(!is.na(x)))*1
 data.tmp1$BL_med_bp <- apply(data.tmp1[,bp.meds],1, function(x) any(!is.na(x)))*1
 data.tmp1$BL_med_lipid <- apply(data.tmp1[,lip.meds],1, function(x) any(!is.na(x)))*1
+data.tmp1$baseline_date <- data.tmp1$`Date of visit [yyyy/mm/dd]`
 
 data.tmp2 <- read_excel(file, sheet=2)[,lab.cols]
 data.tmp3 <- lapply(fu.sheets, function(x) getProvalidFU(x, path=file))
@@ -200,7 +205,7 @@ tripod_flowchart$PROVALID[1] <- length(unique(data.provalid$`Patient reference [
 data.provalid <- data.provalid  %>%
   clean_names()
 data.provalid <- data.provalid  %>%
-  mutate(BL_age = round(as.numeric(as.Date(date_of_visit_yyyy_mm_dd)-as.Date(ISOdate(year_of_birth, 1, 1)))/365.25,0),
+  mutate(BL_age = round(as.numeric(as.Date(baseline_date)-as.Date(ISOdate(year_of_birth, 1, 1)))/365.25,0),
          BL_gender = ifelse(gender=="Female","F","M"),
          BL_sex = ifelse(gender=="Female", 1, 0),
          BL_smoking = ifelse(smoking=="never",0,1),
@@ -218,27 +223,44 @@ data.provalid <- data.provalid  %>%
          Cohort="PROVALID",
          PatID=as.character(patient_reference_id),
          Country= str_sub(data.provalid$country, -2,-1),
-         Time=as.numeric(time)) %>%
+         Time_exact =as.numeric(round(difftime(date_yyyy_mm_dd_10,baseline_date,units="days")/365.25,3)),
+         Time=as.numeric(round(Time_exact))) %>%
   dplyr::rename(BL_bpsys = systolic_mm_hg,
                 BL_bpdia = diastolic_mm_hg,
                 BL_med_lipid = bl_med_lipid,
                 BL_med_bp = bl_med_bp,
                 BL_med_dm = bl_med_dm,
                 FU_date=date_yyyy_mm_dd_10) %>%
-  dplyr::select(PatID, Time, Country, Cohort, FU_date, FU_eGFR_epi, BL_age, BL_sex, BL_smoking, BL_bmi, 
+  dplyr::select(PatID, Time, Time_exact, Country, Cohort, FU_date, baseline_date, FU_eGFR_epi, BL_age, BL_sex, BL_smoking, BL_bmi, 
          BL_uacr, BL_hemo, BL_serumchol, BL_hba1c_perc, BL_hba1c, BL_bpsys, BL_bpdia,
-         BL_med_bp, BL_med_lipid, BL_med_dm)
-      
+         BL_med_bp, BL_med_lipid, BL_med_dm) %>%
+  filter(!Time < 0)
+
+# Delete duplicated rows with Time == 0 (only one baseline!) - take closest to 0
+tmp <- data.provalid[data.provalid$Time==0,]
+tmp <- tmp[tmp$PatID %in% tmp[duplicated(tmp[,c("PatID","Time")]),]$PatID,]
+tmp1 <- tmp %>%
+  group_by(PatID) %>%
+  filter(abs(Time_exact) == min(abs(Time_exact)))
+tmp1$Time_exact <- 0
+
+data.provalid <- data.frame(rbind(tmp1, anti_join(data.provalid, tmp)))
+
+  
 
 # ------------ Merge datasets (GCKD and PROVALID) = development cohort
-cols <- c("PatID", "Cohort","Country","Time","FU_date", "FU_eGFR_epi","BL_age", "BL_sex", "BL_smoking",
+cols <- c("PatID", "Cohort","Country","Time","Time_exact","FU_date", "FU_eGFR_epi","BL_age", "BL_sex", "BL_smoking",
           "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_hba1c_perc", "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid")
 
 data.all <- rbind(data.provalid[,cols], data.gckd[,cols])
+data.all$Time_exact[data.all$Time_exact <0] <-0
+data.all$Time[data.all$Time <=0] <-0
+data.all$Time_exact[data.all$Time ==0] <-0
+
 
 data.all <- data.all %>%
   mutate(BL_uacr_log2=log(BL_uacr,2)) %>%
-  mutate_at(c("Time","FU_eGFR_epi", "BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr"),as.numeric) %>%
+  mutate_at(c("Time","Time_exact","FU_eGFR_epi", "BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr"),as.numeric) %>%
   mutate_at(c("Cohort", "Country", "BL_sex", "BL_smoking", "BL_med_dm", "BL_med_bp", "BL_med_lipid"), as.factor) %>%
   mutate_at(c("BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr",  "BL_uacr_log2"),
             ~pmin(pmax(.x, quantile(.x, .01, na.rm=T)), quantile(.x, .99, na.rm=T)))
