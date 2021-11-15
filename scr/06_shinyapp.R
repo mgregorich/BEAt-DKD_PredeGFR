@@ -1,8 +1,7 @@
 # Copy necessary data
 file.copy(file.path(out.path, "riskpred_model.rds"), 
-          file.path("./shiny", "riskpred_model.rds"), 
-          overwrite = TRUE)
+          file.path(shiny.path, "riskpred_model.rds"))
 
 # Run app in Rstudio from correct directory
 rm(list=ls())
-runApp("./shiny")
+runApp(shiny.path)

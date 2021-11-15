@@ -20,7 +20,7 @@ PROVALID.path = paste0(data.path, "PROVALID/")
 DIACORE.path = paste0(data.path, "DIACORE/")
 
 out.path = "../Output/"
-
+shiny.path = "./shiny/"
 slope_cutpoint=-3
 
 # Load auxiliary functions 
