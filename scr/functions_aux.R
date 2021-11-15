@@ -136,7 +136,7 @@ right_rows <- function (data, times, ids, Q_points) {
 LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  times,
                               level = 0.95, cutpoint=-3, all_times, interval="prediction", M=500, seed=123) 
 {
-  # Specify to try the function
+  #Specify to try the function
   # lmeObject = fit.final
   # newdata = data.full.t0
   # timeVar = "Time_exact"
@@ -149,13 +149,7 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   # interval="prediction"
   # M=100
   # seed=123
-  # 
-  # lmeObject=fit.lme;
-  # newdata = data.test.t0;
-  # cutpoint = slope_cutpoint;
-  # timeVar = "Time_exact"; idVar="PatID"; idVar2="Country";
-  # times =unique(data.full$Time)[-1];
-  # all_times=F
+
 
   # ---- Assign elements of lme to objects
   data <- lmeObject$data
@@ -222,7 +216,7 @@ LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  t
   Z_2_new_pred <- sapply(model.frame(formula("~ Country"), data=newdata_pred)[,1], function(x) Z2.icpt[Z2.icpt$country %in% x,2])
   
   
-  # ------ Compute random coeffs with baseline value; assumes country is known
+  # ------ Compute random coeffs with baseline value; assumes country is unknown
   b <- matrix(0.0, n, ncol(Z_new))
   post_vars <- DZtVinv <- vector("list", n)
   for (i in seq_len(n)) {
