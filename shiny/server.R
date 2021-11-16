@@ -38,6 +38,8 @@ calc_map <- function(sys, dia){
 }
 
 
+
+
 smilegraph <- function(risk){
   happy<-readPNG("happy.png")
   sad<-readPNG("sad.png")
@@ -101,9 +103,9 @@ shinyServer(function(input, output, session) {
                              BL_sex=as.numeric(input$BL_sex), 
                              BL_bmi=input$BL_bmi, 
                              BL_smoking=as.numeric(input$BL_smoking),
-                             BL_hemo=input$BL_hemo, BL_hba1c=input$BL_hba1c, BL_serumchol=input$BL_serumchol, BL_map=calc_map(sys=input$BL_sysbp,dia=input$BL_diabp),
-                             BL_uacr_log2=log(input$BL_uacr,2),
-                             BL_med_dm=0, BL_med_bp=0, BL_med_lipid=0)
+                             BL_hemo=14.5, BL_hba1c=input$BL_hba1c, BL_serumchol=202, BL_map=calc_map(sys=139,dia=76),
+                             BL_uacr_log2=log(41,2),
+                             BL_med_dm=input$BL_med_dm*1, BL_med_bp=input$BL_med_bp*1, BL_med_lipid=input$BL_med_lipid*1)
     }
     
     
@@ -126,14 +128,51 @@ shinyServer(function(input, output, session) {
     data.pred <- full_join(data.long,
                            res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")],
                            by=c("PatID", "Time"))
-<<<<<<< HEAD
     data.pred[data.pred$Time==0,]$pred <- input$BL_eGFR
-=======
->>>>>>> 2cb2e5d03246c82b439df51943384441cd33b7a6
+    data.pred <- data.frame(data.pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")])
     data.pred
+    
+      })
+  
+  makeOutputTable <- eventReactive(input$goButton, {
+    odata <- calc_out()
+    odata <- data.frame(odata[,-1])
+    
+    odata$pred.CI <- paste0("(",round(odata$pred.low,2),", ",round(odata$pred.upp,2), ")")
+    odata$slope.CI <- paste0("(",round(odata$slope.low,2),", ",round(odata$slope.upp,2), ")")
+    
+    pred <- data.frame("Time"=odata$Time, "Prediction"=odata$pred, "CI"=odata$pred.CI)
+    pred$CI[1] <- ""
+    colnames(pred) <- c("FU Time", "Prediction","95% Confidence interval")
+   
+    slope <- data.frame("Slope"=odata$slope[1], "CI"=odata$slope.CI[1])
+    colnames(slope) <- c("eGFR slope", "95% Confidence interval")
+
+     return(list("pred"=pred, "slope"=slope, "prob"=odata$prob.prog[1]))
   })
   
-  
+  makeInputTable <- eventReactive(input$goButton, {
+    idata <- inputdata()
+    idata <- data.frame(idata)[,-c(1,2,3)]
+    idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")] <- apply(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")],2, function(x) ifelse(x==1, "yes", "no"))
+    idata$BL_smoking <- ifelse(idata$BL_smoking==1, "ever", "never")
+    idata$BL_sex <- ifelse(idata$BL_sex==1, "female", "male")
+    
+    if(input$add_pred==2){
+      idemo <- data.frame("General"=c("Baseline eGFR", "Age","Sex", "BMI", "Smoking"), "Values"=unlist(idata[,c("FU_eGFR_epi","BL_age", "BL_sex", "BL_bmi", "BL_smoking")]))
+      imed <- data.frame("Medication"=c("Glucose-lowering med.", "Blood pressure-lowering med.", "Lipid-lowering med."), "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
+      ilab <- data.frame("Laboratory"=c("Hemoglobin", "Hba1C", "Serum Cholesterol", "MAP", "log2UACR"), "Values"=unlist(idata[,c("BL_hemo", "BL_hba1c", "BL_serumchol", "BL_map", "BL_uacr_log2")]))
+
+      return(list("idemo"=idemo,"ilab"=ilab,"imed"=imed))
+    }
+    else{
+      idemo <- data.frame("General"=c("Baseline eGFR", "Age","Sex", "BMI", "Smoking"), "Values"=unlist(idata[,c("FU_eGFR_epi","BL_age", "BL_sex", "BL_bmi", "BL_smoking")]))
+      imed <- data.frame("Medication"=c("Glucose-lowering med.", "Blood pressure-lowering med.", "Lipid-lowering med."), "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
+      
+      return(list("idemo"=idemo,"imed"=imed))
+    }
+    
+  })
   
   # ---------- Execute --------------------------------------------------------
   text_risk1 <- eventReactive(input$goButton, {  
@@ -152,6 +191,16 @@ shinyServer(function(input, output, session) {
   
   plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"prob.prog"]*100,2))})
   
+  text_data <- eventReactive(input$goButton,{
+    if(input$add_pred==2){
+      HTML(paste0("The tables below contain both the patient information given and the predictions resulting from the model, including 95% prediction intervals for the individual time points. The patient's probability of progression to fast renal decline is also given."))
+      
+    }else{
+      HTML(paste("The tables below contain both the patient information given and the predictions resulting from the model, including 95% prediction intervals for the individual time points. The patient's probability of progression to fast renal decline is also given.", 
+            "By selecting the simple model, the average laboratory measurements of the development cohort were used to calculate the prediction values and the risk estimate. This can skew the accuracy and precision of the estimates.", 
+            sep="<br/>"))
+    }
+  })
   
   # ------- Output ------------------------------
   output$text_risk1 <- renderText({
@@ -160,6 +209,10 @@ shinyServer(function(input, output, session) {
   
   output$text_risk2 <- renderText({
     text_risk2()
+  })
+  
+  output$text_data <- renderText({
+    text_data()
   })
   
   output$text_longitudinal <- renderText({
@@ -175,13 +228,28 @@ shinyServer(function(input, output, session) {
     plot_trajectory(data.pred)
   })
   
-  output$table_new <- renderTable({
-    inputdata()
+  output$table_new1 <- renderTable({
+    makeInputTable()$idemo
   })
   
-  output$table_pred <- renderTable({
-    calc_out()[, colnames(calc_out()) %in% c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")]
+  output$table_new2 <- renderTable({
+    if(input$add_pred==2){
+      makeInputTable()$ilab}
+    else{return()}
   })
+  
+  output$table_new3 <- renderTable({
+    makeInputTable()$imed
+  })
+  
+  output$table_pred1 <- renderTable({
+    makeOutputTable()$pred
+  })
+  
+  output$table_pred2 <- renderTable({
+    makeOutputTable()$slope
+  })
+
 
 
   

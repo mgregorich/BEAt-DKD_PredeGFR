@@ -141,10 +141,19 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                                  h4(id="text1", textOutput("text_longitudinal")),
                                                  plotOutput("plot_trajectory", height="500px", width="700px")),
                                         tabPanel("Data", 
+                                                 fluidRow(
+                                          h4(id="text1", htmlOutput("text_data")),
+                                          column(6, 
                                                  h4(id="text2", "Provided patient information:"),
-                                                 tableOutput("table_new"),
+                                                 fluidRow(
+                                                   column(6, h4(id="text3",tableOutput("table_new1"))),
+                                                   column(6, h4(id="text3",tableOutput("table_new2")))),
+                                                 h4(id="text3",tableOutput("table_new3"))),
+                                          column(6,
                                                  h4(id="text2", "Predicted eGFR per time point"),
-                                                 tableOutput("table_pred"))
+                                                 h4(id="text3",tableOutput("table_pred1")),
+                                                 h4(id="text3",tableOutput("table_pred2")) )
+                                          ))
                                         
                                       )
                                ),
