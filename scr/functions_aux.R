@@ -6,6 +6,8 @@
 
 
 
+# --------------------------- GENERAL ---------------------
+
 
 recodeDates <- function(x){
   x=str_replace(x, "Mrz", "März")
@@ -14,54 +16,57 @@ recodeDates <- function(x){
   return(x.new)
 }
 
-c_index <- function(pred, obs, N, k){
+right_rows <- function (data, times, ids, Q_points) {
+  fids <- factor(ids, levels = unique(ids))
+  if (!is.list(Q_points))
+    Q_points <- split(Q_points, row(Q_points))
+  ind <- mapply(findInterval, Q_points, split(times, fids))
+  ind[ind < 1] <- 1
+  rownams_id <- split(row.names(data), fids)
+  ind <- mapply(`[`, rownams_id, split(ind, col(ind)))
+  data[c(ind), ]
+}
+
+
+# -------------------------- MODELLING --------------------
+
+c_index <- function(pred, obs){
   c.model <- concreg(data=data.frame(predicted=pred, observed=obs), observed~predicted, npar=TRUE)
   return(1-cindex(c.model))
 }
 
-eval_preds <- function(pred, obs, N=NULL, k=NULL){
+eval_preds <- function(pred, obs, lmerObject){
   # x=data.test.list[[8]]; pred=x$pred; obs=x$FU_eGFR_epi; N=length(unique(fit.lme$data$PatID)); k=sum(anova(fit.lme)$numDF)
   
   df <- data.frame(pred=pred, obs=obs)
   df <- df[complete.cases(df),]
   
-  r2 <- cor(pred,obs, use="pairwise.complete.obs")^2
+  r2 <- r.squaredGLMM(lmerObject)
   CS <- ifelse(all(is.na(df$obs)),NA, lm(df$obs ~ df$pred)$coefficients[2])
-  if(nrow(df)>5){
+  
+  if(sum(!is.na(obs))>25){
     Cind <- ifelse(all(is.na(df$obs)),NA,c_index(pred=df$pred, obs=df$obs))
-  
-    if(!(is.null(N) | is.null(k))) {r2 <- 1-(((1-r2)*(N-1))/(N-k-1))}
-    res <- data.frame(Nobs = sum(!is.na(df$obs)),
-                      R2 = r2,
-                      RMSE = RMSE(df$pred, df$obs),
-                      MAE = MAE(df$pred, df$obs),
-                      CalbinLarge = mean(df$obs)- mean(df$pred),
-                      CalbSlope=CS,
-                      C = Cind)
-  }else{
-    res <- data.frame(Nobs = sum(!is.na(df$obs)),
-                      R2 = r2,
-                      RMSE = RMSE(df$pred, df$obs),
-                      MAE = MAE(df$pred, df$obs),
-                      CalbinLarge = mean(df$obs)- mean(df$pred),
-                      CalbSlope=CS,
-                      C = NA)
-  }
-  
+  }else{Cind<-NA}
 
+  res <- data.frame(Nobs = sum(!is.na(df$obs)),
+                    R2marg = r2[1],
+                    R2cond = r2[2],
+                    RMSE = RMSE(df$pred, df$obs),
+                    MAE = MAE(df$pred, df$obs),
+                    CalbinLarge = mean(df$obs)- mean(df$pred),
+                    CalbSlope=CS,
+                    C = Cind)
   return(res)
 }
+
+
+
+# ------------------------------ PLOTS ------------------------
 
 plot_calibration_cont <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F, 
                              out.path = "."){
   df <- data.frame(yobs=yobs, yhat=yhat)
-  
-  if(!is.null(fit)){
-    N <- length(unique(fit$data$PatID))
-    k <- sum(anova(fit)$numDF)
-  }else{N<-k<-NULL}
-  
-  res <- round(eval_preds(pred=yhat, obs = yobs, N=N, k=k),3)
+  res <- round(eval_preds(pred=yhat, obs = yobs, lmerObject=fit),3)
   
   # Plot
   p <- ggplot(df, aes(x=yhat, y=yobs)) +
@@ -118,20 +123,11 @@ plot_calibration_bin <- function(pred, true, out.path, save=F){
   return(p)
 }
 
-right_rows <- function (data, times, ids, Q_points) {
-  fids <- factor(ids, levels = unique(ids))
-  if (!is.list(Q_points))
-    Q_points <- split(Q_points, row(Q_points))
-  ind <- mapply(findInterval, Q_points, split(times, fids))
-  ind[ind < 1] <- 1
-  rownams_id <- split(row.names(data), fids)
-  ind <- mapply(`[`, rownams_id, split(ind, col(ind)))
-  data[c(ind), ]
-}
 
 
+# --------------------- PREDICTION UPDATE WITH BASELINE VALUES  ---------------------
 
-########################################################################################################################
+
 
 #' @title LongPred_ByBase for lme4 model objects
 #' 
@@ -263,7 +259,7 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   pred_y_i0 <- c(X_new %*% betas) + Z_2_new
   pred_y_it <- c(X_new_pred %*% betas) + Z_2_new_pred
   
-  # ------  Update predictions ------
+  # --------  Update predictions
   outcomeVar <- formula(lmerObject)[[2]]
   obs_y <- newdata[[outcomeVar]]
   b0.post <- (D[1,1]/(D[1,1] + sigma^2))*(obs_y-pred_y_i0)
@@ -287,7 +283,8 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   
   # ------ eGFR slope per individual
   dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
-    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*%                                                                          betas[str_detect(names(betas), paste0(timeVar,":"))]) +
+    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
+        betas[str_detect(names(betas), paste0(timeVar,":"))]) +
     c(b.new[,str_detect(colnames(b.new), "Time")])
   
   # ------- Confidence/Prediction interval for Y 
@@ -498,7 +495,7 @@ LongPred_ByBase_lme <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL
   pred_y_i0 <- c(X_new %*% betas) + Z_2_new
   pred_y_it <- c(X_new_pred %*% betas) + Z_2_new_pred
   
-  # ------  Update predictions ------
+  # ------  Update predictions 
   outcomeVar <- all.vars(lmeObject$terms)[1]
   obs_y <- newdata[[outcomeVar]]
   b0.post <- (D[1,1]/(D[1,1] + sigma^2))*(obs_y-pred_y_i0)
