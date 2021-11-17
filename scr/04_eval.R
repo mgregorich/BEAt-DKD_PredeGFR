@@ -11,16 +11,15 @@
 
 tbl_tmp <- lapply(unique(data.full$Time), function(x) eval_preds(pred=df.preds[df.preds$Time==x,]$pred, 
                                                                  obs=df.preds[df.preds$Time==x,]$FU_eGFR_epi, 
-                                                                 N=length(unique(fit.final$data$PatID)), 
-                                                                 k=sum(anova(fit.final)$numDF)))
+                                                                 lmerObject = fit.final))
 tbl_performance <- data.frame("Time"=seq(0,8,1),round(do.call(rbind, tbl_tmp),3))
 # tbl_performance$C <- round(sapply(0:7, function(x) mean(df.stats[df.stats$Time==x,]$C, na.rm=T)),3)
 write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"), 
            overwrite = TRUE)
 
 # Overall performance
-ov.perf <- eval_preds(df.preds[!df.preds$Time==0,]$pred, df.preds[!df.preds$Time==0,]$FU_eGFR_epi,N=length(unique(fit.final$data$PatID)), 
-           k=sum(anova(fit.final)$numDF))
+# ov.perf <- eval_preds(df.preds[!df.preds$Time==0,]$pred, df.preds[!df.preds$Time==0,]$FU_eGFR_epi, lmerObject = fit.final)
+
 
 ################################################################################
 # ----------------------------- Calibration ------------------------------------
@@ -35,13 +34,13 @@ ov.perf <- eval_preds(df.preds[!df.preds$Time==0,]$pred, df.preds[!df.preds$Time
 # plot_calibration_cont(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$prior.pred, time=7, save=T)
 
 # After update
-plot_calibration_cont(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, time=1, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, time=2, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, time=3, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, time=4, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, time=5, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, time=6, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, time=7, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, fit = fit.final, time=1, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, fit = fit.final, time=2, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, fit = fit.final, time=3, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, fit = fit.final, time=4, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, fit = fit.final, time=5, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, fit = fit.final, time=6, save=T, out.path = out.path)
+plot_calibration_cont(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, fit = fit.final, time=7, save=T, out.path = out.path)
 
 # Probability of progression
 pred_prob = df.preds[df.preds$Time==0,]$prob.prog
@@ -59,7 +58,7 @@ print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), "
 ################################################################################
 
 # ----- Plot subject-specific trajectories
-which.max(abs(fit.final$coefficients$random$PatID[,2]))
+which.max(abs(coef(fit.final)$PatID[,"Time"]))
 
 set.seed(666)
 df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.low", "pred.upp")], id.vars = c("PatID","Time", "pred.low", "pred.upp"))
@@ -156,10 +155,10 @@ ggsave(paste0(out.path, "fig_longipred_eGFR_cohort_dev.png"),width=10, height=6)
 
 
 # ---- Forest plot of model coefficients
-df <- data.frame(variable=rownames(intervals(fit.final)[[1]]),
-                 effect=as.numeric(intervals(fit.final)[[1]][,2]),
-                 lower=as.numeric(intervals(fit.final)[[1]][,1]),
-                 upper=as.numeric(intervals(fit.final)[[1]][,3]))
+df <- data.frame(variable=rownames(summary(fit.final)$coefficients),
+                 effect=summary(fit.final)$coefficients[,1],
+                 lower=summary(fit.final)$coefficients[,1] - 1.96*summary(fit.final)$coefficients[,2],
+                 upper=summary(fit.final)$coefficients[,1] + 1.96* summary(fit.final)$coefficients[,2])
 df$variable <- factor(df$variable, levels = df$variable[length(df$variable):1])
 
 head(df)
@@ -217,3 +216,4 @@ summary(df.preds.t0[df.preds.t0$Cohort==1,]$prob.prog)
 #                  data=data.full, REML=F)
 # summary(fit.lme)
 # summary(fit.lmer)
+

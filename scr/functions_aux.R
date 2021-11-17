@@ -287,7 +287,8 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   
   # ------ eGFR slope per individual
   dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
-    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*%                                                                          betas[str_detect(names(betas), paste0(timeVar,":"))]) +
+    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
+        betas[str_detect(names(betas), paste0(timeVar,":"))]) +
     c(b.new[,str_detect(colnames(b.new), "Time")])
   
   # ------- Confidence/Prediction interval for Y 
