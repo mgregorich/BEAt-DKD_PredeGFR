@@ -105,6 +105,12 @@ summary(data.full[data.full$Time_cat==5,]$Time_cont)
 summary(data.full[data.full$Time_cat==6,]$Time_cont)
 summary(data.full[data.full$Time_cat==7,]$Time_cont)
 
+# --- Average decline of eGFR per year
+# data.full<- data.full %>%
+#   group_by(PatID) %>%
+#   mutate(eGFR_decline_yearly = ifelse(abs(Time_cat-lag(Time_cat)) %in% c(2,4,6), (FU_eGFR_epi - lag(FU_eGFR_epi))/2, FU_eGFR_epi - lag(FU_eGFR_epi)))
+# 
+# data.full[data.full$PatID %in% data.full[which.max(data.full$eGFR_decline_yearly),]$PatID,]
 
 
 #####################################################################################################

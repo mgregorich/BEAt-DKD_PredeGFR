@@ -133,7 +133,7 @@ right_rows <- function (data, times, ids, Q_points) {
 
 ########################################################################################################################
 
-LongPred_ByBase <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  times,
+LongPred_ByBase_lme <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL,  times,
                               level = 0.95, cutpoint=-3, all_times, interval="prediction", M=500, seed=123) 
 {
   # Specify to try the function

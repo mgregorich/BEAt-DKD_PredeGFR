@@ -18,6 +18,9 @@ tbl_performance <- data.frame("Time"=seq(0,8,1),round(do.call(rbind, tbl_tmp),3)
 write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"), 
            overwrite = TRUE)
 
+# Overall performance
+ov.perf <- eval_preds(df.preds[!df.preds$Time==0,]$pred, df.preds[!df.preds$Time==0,]$FU_eGFR_epi,N=length(unique(fit.final$data$PatID)), 
+           k=sum(anova(fit.final)$numDF))
 
 ################################################################################
 # ----------------------------- Calibration ------------------------------------
@@ -198,3 +201,19 @@ summary(df.preds.t0$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==0,]$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==1,]$prob.prog)
 
+
+# ---- Partial explained variance of individual predictors
+
+# part.r2 = r2beta(model = fit.final, partial = TRUE, method = 'sgv') %>%
+#   data.frame() %>%
+#   select(Effect, Rsq)
+
+# fit.lme <- lme(fixed=FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+#                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
+#                  random=list(~1|Country,~1+Time|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
+# 
+# fit.final <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+#                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
+#                  data=data.full, REML=F)
+# summary(fit.lme)
+# summary(fit.lmer)
