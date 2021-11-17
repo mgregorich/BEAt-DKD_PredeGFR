@@ -118,7 +118,7 @@ shinyServer(function(input, output, session) {
     data.new=inputdata()
     slope.cutpoint <- input$cutpoint
     
-    res <- LongPred_ByBase(risk_model, newdata = data.new,  
+    res <- LongPred_ByBase_lmer(risk_model, newdata = data.new,  
                            cutpoint = slope.cutpoint,
                            timeVar = "Time", idVar="PatID", idVar2="Country",
                            times = seq(1,7,1), 
