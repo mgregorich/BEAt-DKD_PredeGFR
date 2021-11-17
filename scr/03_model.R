@@ -19,6 +19,7 @@
 
 data.full$Time <- data.full$Time_cont
 fit.final <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+<<<<<<< HEAD
                                                   BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
                   data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
 
@@ -26,6 +27,10 @@ fit.final <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_sm
 #                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
 #                random=list(~1|Country,~1+Time|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
 # summary(fit.final)$coefficients$fixed
+=======
+                                                BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
+                                                data=data.full, REML=F)
+>>>>>>> lme4_refactor
 
 # UPDATE prediction with BL value
 data.full.t0 <- data.full[data.full$Time==0,]
