@@ -4,7 +4,7 @@
 # Info: user interface file - shiny
 ################################
 
-pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png, shinyWidgets)
+pacman::p_load(shiny, shinyjs, shinythemes, lme4, ggplot2, reshape2, dplyr, tidyverse, png, shinyWidgets)
 source("functions_aux.R")
 
 # -------------------- SHINY User Interface  ---------------------------
