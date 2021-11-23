@@ -12,13 +12,14 @@
 tbl_tmp <- lapply(unique(data.full$Time), function(x) eval_preds(pred=df.preds[df.preds$Time==x,]$pred, 
                                                                  obs=df.preds[df.preds$Time==x,]$FU_eGFR_epi, 
                                                                  lmerObject = fit.final))
-tbl_performance <- data.frame("Time"=seq(0,8,1),round(do.call(rbind, tbl_tmp),3))
-# tbl_performance$C <- round(sapply(0:7, function(x) mean(df.stats[df.stats$Time==x,]$C, na.rm=T)),3)
+time.perf <- data.frame("Time"=seq(0,8,1),round(do.call(rbind, tbl_tmp),3))
+# Overall performance
+ov.perf <- eval_preds(df.preds[!df.preds$Time==0,]$pred, df.preds[!df.preds$Time==0,]$FU_eGFR_epi, lmerObject = fit.final)
+tbl_performance <- list("overall"=ov.perf, "time-specific"=time.perf)
+
 write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"), 
            overwrite = TRUE)
 
-# Overall performance
-# ov.perf <- eval_preds(df.preds[!df.preds$Time==0,]$pred, df.preds[!df.preds$Time==0,]$FU_eGFR_epi, lmerObject = fit.final)
 
 
 ################################################################################
@@ -203,17 +204,37 @@ summary(df.preds.t0[df.preds.t0$Cohort==1,]$prob.prog)
 
 # ---- Partial explained variance of individual predictors
 
-# part.r2 = r2beta(model = fit.final, partial = TRUE, method = 'sgv') %>%
-#   data.frame() %>%
-#   select(Effect, Rsq)
+#remotes::install_github("mastoffel/partR2") 
+library(partR2)
+library(future)
+library(furrr)
 
-# fit.lme <- lme(fixed=FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
-#                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),
-#                  random=list(~1|Country,~1+Time|PatID), data=data.full, control=lmeControl(opt = "optim"), method = "ML")
-# 
-# fit.final <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
-#                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
-#                  data=data.full, REML=F)
-# summary(fit.lme)
-# summary(fit.lmer)
+pred.vars <- c("BL_age","BL_sex","BL_bmi", "BL_smoking", "BL_map",
+               "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr_log2",
+               "BL_med_dm", "BL_med_bp", "BL_med_lipid")
+
+plan(multisession, workers=detectCores()*.60)
+partial.R2.cond <- partR2(fit.final, partvars = pred.vars,
+       R2_type = "conditional", nboot=10, parallel=T, 
+       max_level = 1,allow_neg_r2 = T)
+partial.R2.marg <- partR2(fit.final, partvars = pred.vars,
+                          R2_type = "marginal", nboot=10, parallel=T, 
+                          max_level = 1,allow_neg_r2 = T)
+plan(sequential)
+
+partial.R2.cond <- partial.R2.cond$R2 %>% 
+  data.frame() %>% 
+  mutate(drop.R2=first(estimate)-estimate) %>%
+  mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
+
+partial.R2.marg <- partial.R2.marg$R2 %>% 
+  data.frame() %>% 
+  mutate(drop.R2=first(estimate)-estimate) %>%
+  mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
+
+partial.R2 <- list("Marginal"=partial.R2.marg, "Conditional"=partial.R2.cond)
+
+#saveRDS(partial.R2, paste0(out.path,"model_partialR2.rds"))
+write.xlsx(partial.R2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = TRUE)
+
 

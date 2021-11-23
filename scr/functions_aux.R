@@ -30,6 +30,12 @@ right_rows <- function (data, times, ids, Q_points) {
 
 # -------------------------- MODELLING --------------------
 
+adjusted_R2 <- function(pred, obs, N, k){
+  r2 <- cor(pred,obs, use="pairwise.complete.obs")^2
+  r2 <- 1-(((1-r2)*(N-1))/(N-k-1))
+  return(r2)
+}
+
 c_index <- function(pred, obs){
   c.model <- concreg(data=data.frame(predicted=pred, observed=obs), observed~predicted, npar=TRUE)
   return(1-cindex(c.model))
@@ -42,6 +48,7 @@ eval_preds <- function(pred, obs, lmerObject){
   df <- df[complete.cases(df),]
   
   r2 <- r.squaredGLMM(lmerObject)
+  adj.r2 <- adjusted_R2(pred, obs, N=length(unique(fit.final@frame$PatID)), k=sum(anova(fit.final)$NumDF))
   CS <- ifelse(all(is.na(df$obs)),NA, lm(df$obs ~ df$pred)$coefficients[2])
   
   if(sum(!is.na(obs))>25){
@@ -51,6 +58,7 @@ eval_preds <- function(pred, obs, lmerObject){
   res <- data.frame(Nobs = sum(!is.na(df$obs)),
                     R2marg = r2[1],
                     R2cond = r2[2],
+                    adjR2 = adj.r2,
                     RMSE = RMSE(df$pred, df$obs),
                     MAE = MAE(df$pred, df$obs),
                     CalbinLarge = mean(df$obs)- mean(df$pred),
