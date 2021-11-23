@@ -106,12 +106,25 @@ summary(data.full[data.full$Time_cat==6,]$Time_cont)
 summary(data.full[data.full$Time_cat==7,]$Time_cont)
 
 # --- Average decline of eGFR per year
-# data.full<- data.full %>%
-#   group_by(PatID) %>%
-#   mutate(eGFR_decline_yearly = ifelse(abs(Time_cat-lag(Time_cat)) %in% c(2,4,6), (FU_eGFR_epi - lag(FU_eGFR_epi))/2, FU_eGFR_epi - lag(FU_eGFR_epi)))
-# 
-# data.full[data.full$PatID %in% data.full[which.max(data.full$eGFR_decline_yearly),]$PatID,]
 
+data.full<- data.full %>%
+  group_by(PatID) %>%
+  mutate(eGFR_decline_yearly = ifelse(abs(Time_cat-lag(Time_cat)) %in% c(2,4,6), (FU_eGFR_epi - lag(FU_eGFR_epi))/2, FU_eGFR_epi - lag(FU_eGFR_epi)))
+
+tmp <- data.full[data.full$PatID %in% data.full[which.max(data.full$eGFR_decline_yearly),]$PatID,]
+ggplot(tmp, aes(x=Time_cat, y=FU_eGFR_epi, group=PatID, fill=PatID, col=PatID)) +
+  geom_line(size=0.8)+
+  geom_point() +
+  theme_bw() +
+  theme(text=element_text(size=18), legend.position = "top")
+
+tmp <- data.full[data.full$PatID %in% data.full[which(abs(data.full$eGFR_decline_yearly)>90),]$PatID,]
+
+ggplot(tmp, aes(x=Time_cat, y=FU_eGFR_epi, group=PatID, fill=PatID, col=PatID)) +
+  geom_line(size=0.8)+
+  geom_point() +
+  theme_bw() +
+  theme(text=element_text(size=18), legend.position = "top")
 
 #####################################################################################################
 # ------------------------------ TABLE 1 -----------------------------------
@@ -128,6 +141,10 @@ table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking"
                                                 "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), test=F)
 write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_val.xlsx"), overwrite=T)
 
+data.tmp <- data.full[data.full$Time_cat==0,]
+table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
+                                                "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), test=F)
+write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
 
 # ------------- Table: longitudinal eGFR measurements stratified by cohort
 table(data.full$Time_cat, data.full$Cohort)

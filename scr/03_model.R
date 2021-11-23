@@ -50,19 +50,18 @@ plot_calibration_cont(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=dat
 plot_calibration_cont(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$pred, fit=fit.final, time=5)
 plot_calibration_cont(yobs=data.preds[data.preds$Time==6,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==6,]$pred, fit=fit.final, time=6)
 plot_calibration_cont(yobs=data.preds[data.preds$Time==7,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==7,]$pred, fit=fit.final, time=7)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==8,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==8,]$pred, fit=fit.final, time=8)
 
 
 # ----- Final model
-summary(fit.final)
-coef(fit.final)$Country[,1]
-print(coef(fit.final)$Country[,1])
-hist(coef(fit.final)$PatID[,"(Intercept)"])
-summary(coef(fit.final)$PatID[,"(Intercept)"])
-hist(coef(fit.final)$PatID[,"Time"])
-summary(coef(fit.final)$PatID[,"Time"])
-summary(fit.final)$coefficients
-data.full$resid <- residuals(fit.final)
+# summary(fit.final)
+# coef(fit.final)$Country[,1]
+# print(coef(fit.final)$Country[,1])
+# hist(coef(fit.final)$PatID[,"(Intercept)"])
+# summary(coef(fit.final)$PatID[,"(Intercept)"])
+# hist(coef(fit.final)$PatID[,"Time"])
+# summary(coef(fit.final)$PatID[,"Time"])
+# summary(fit.final)$coefficients
+# data.full$resid <- residuals(fit.final)
 #saveRDS(fit.final, paste0(out.path,"riskpred_model.rds"))
 #saveRDS(fit.final, paste0(shiny.path,"/riskpred_model.rds"))
 
