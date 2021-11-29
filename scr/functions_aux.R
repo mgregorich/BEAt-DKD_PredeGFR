@@ -8,7 +8,6 @@
 
 # --------------------------- GENERAL ---------------------
 
-
 recodeDates <- function(x){
   x=str_replace(x, "Mrz", "März")
   x.new=if_else(str_detect(x, "^[:digit:]+$"), as.character(as.Date(as.numeric(x), origin = "1899-12-30")), as.character(as.Date(x, "%d%b%Y")))
@@ -48,7 +47,7 @@ eval_preds <- function(pred, obs, lmerObject){
   df <- df[complete.cases(df),]
   
   r2 <- r.squaredGLMM(lmerObject)
-  adj.r2 <- adjusted_R2(pred, obs, N=length(unique(fit.final@frame$PatID)), k=sum(anova(fit.final)$NumDF))
+  adj.r2 <- adjusted_R2(pred, obs, N=length(unique(lmerObject@frame$PatID)), k=sum(anova(lmerObject)$NumDF))
   CS <- ifelse(all(is.na(df$obs)),NA, lm(df$obs ~ df$pred)$coefficients[2])
   
   if(sum(!is.na(obs))>25){
@@ -71,7 +70,7 @@ eval_preds <- function(pred, obs, lmerObject){
 
 # ------------------------------ PLOTS ------------------------
 
-plot_calibration_cont <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F, 
+plot_calibration_cont <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F, type="postUp",
                              out.path = "."){
   df <- data.frame(yobs=yobs, yhat=yhat)
   if(!is.null(fit)){res <- round(eval_preds(pred=yhat, obs = yobs, lmerObject=fit),3)}
@@ -82,22 +81,18 @@ plot_calibration_cont <- function(yobs, yhat, fit=NULL, time="Not specified!", c
     scale_x_continuous(expand = c(0, 0), name = "Predicted", limits = c(0,150)) + 
     scale_y_continuous(expand = c(0, 0), name = "Observed", limits = c(0,150)) +
     geom_abline(intercept = 0) + 
-    ggtitle(paste0("FU time = ", time)) +
+    ggtitle(paste0("Time of follow-up (years) = ", time)) +
     theme_bw() +
-    theme(plot.title = element_text(hjust = 0.5), text=element_text(size=16)) 
-  
-  if(!save){
+    theme(plot.title = element_text(hjust = 0.5), text=element_text(size=18)) 
+
+  if(save){ggsave(paste0(out.path, "fig_cal_",cohort,"_t",time,"_",type,".png"),width=8, height=8)
+  }else{
     p<- p +
-    annotate("text", x = 25, y = 125, label = paste0("R2 = ",res$R2,
-                                                     "\nC-index = ", res$C, 
-                                                     "\nCalLarge = ", res$CalbinLarge, 
-                                                     "\nCalSlope = ", res$CalbSlope))}
-  print(p)
-  if(save){ggsave(paste0(out.path, "fig_cal_",cohort,"_t",time,".png"),width=8, height=8)}
-  # filename <- paste0("plot_calcurve_", mod.method)
-  # png(file = paste(out.path, filename,".png", sep = ""), width = 5*600, height = 5*600, units = "px", res = 600)
-  # plot_calibration_curve_ps
-  # dev.off()
+      annotate("text", x = 25, y = 125, label = paste0("R2 = ",res$adjR2,
+                                                       "\nC-index = ", res$C, 
+                                                       "\nCalLarge = ", res$CalbinLarge, 
+                                                       "\nCalSlope = ", res$CalbSlope))}
+    print(p)  
 }
 
 plot_calibration_bin <- function(pred, true, out.path, save=F){
@@ -163,6 +158,13 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   # cutpoint = slope_cutpoint;
   # timeVar = "Time"; idVar="PatID"; idVar2="Country";
   # times =sort(unique(data.diacore$Time_cat)); 
+  # all_times=F
+  
+  # lmerObject=fit.lmer; 
+  # newdata = data.test.t0; 
+  # cutpoint = slope_cutpoint;
+  # timeVar = "Time"; idVar="PatID"; idVar2="Country";
+  # times =unique(data.full$Time_cat)[-1]; 
   # all_times=F
   
   
@@ -365,8 +367,29 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   
   # ------ Probability of Progression:
   
-  prob.prog <- round(pnorm(cutpoint,dyit_hat,sd.dyi, lower.tail=T),4)
+  prob.prog <- round(pnorm((cutpoint-dyit_hat)/sd.dyi, lower.tail=T),4)
   
+  # prob.prog <- data.frame(PatID=data.full.t0$PatID, "pred.prob"=prob.prog)
+  # true.prog <- data.full %>%
+  #   mutate(Time_cont=as.numeric(Time_cont)) %>%
+  #   group_by(PatID) %>%
+  #   do(broom::tidy(lm(FU_eGFR_epi ~ Time_cont,  data = .))) %>%
+  #   filter(term %in% "Time_cont") %>%
+  #   dplyr::select(PatID, estimate) %>%
+  #   `colnames<-`(c("PatID", "true.slope")) %>%
+  #   mutate(true.prob = (true.slope <= slope_cutpoint)*1) %>%
+  #   data.frame()
+  # df <- full_join(prob.prog, true.prog, by="PatID")
+  # 
+  # pred_prob = df$pred.prob
+  # true_prob = df$true.prob
+  # plot_calibration_bin(pred=pred_prob, true=as.factor(true_prob), out.path = out.path, save=T)
+  # Brier <- mean((pred_prob-true_prob)^2)
+  # C.index <- somers2(pred_prob, true_prob)["C"]
+  # Deviance<- -2*sum(true_prob*log(pred_prob) + (1-true_prob)*log(1-pred_prob) )
+  # print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), " and deviance = ", round(Deviance,2)))
+  # 
+  # 
   
   # ------Output
   # Predictions + CI
@@ -597,15 +620,35 @@ LongPred_ByBase_lme <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL
       upp.dyi <- apply(sampled_dy,1, quantile, probs = 1 - (1 - level) / 2)[1]
       sd.dyi <- apply(sampled_dy,1, sd)[1]
     }
-
-    
   }
+  
   
   # ------ Probability of Progression:
 
-  prob.prog <- round(pnorm(cutpoint,dyit_hat,sd.dyi, lower.tail=T),4)
-
+  prob.prog <- round(pnorm((cutpoint-dyit_hat)/sd.dyi, lower.tail=T),4)
   
+  # prob.prog <- data.frame(PatID=data.full.t0$PatID, "pred.prob"=prob.prog)
+  # true.prog <- data.full %>%
+  #   mutate(Time_cont=as.numeric(Time_cont)) %>%
+  #   group_by(PatID) %>%
+  #   do(broom::tidy(lm(FU_eGFR_epi ~ Time_cont,  data = .))) %>%
+  #   filter(term %in% "Time_cont") %>%
+  #   dplyr::select(PatID, estimate) %>%
+  #   `colnames<-`(c("PatID", "true.slope")) %>%
+  #   mutate(true.prob = (true.slope <= slope_cutpoint)*1) %>%
+  #   data.frame()
+  # df <- full_join(prob.prog, true.prog, by="PatID")
+  # 
+  # pred_prob = df$pred.prob
+  # true_prob = df$true.prob
+  # plot_calibration_bin(pred=pred_prob, true=as.factor(true_prob), out.path = out.path, save=T)
+  # Brier <- mean((pred_prob-true_prob)^2)
+  # C.index <- somers2(pred_prob, true_prob)["C"]
+  # Deviance<- -2*sum(true_prob*log(pred_prob) + (1-true_prob)*log(1-pred_prob) )
+  # print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), " and deviance = ", round(Deviance,2)))
+  # 
+  # 
+
   # ------Output
   # Predictions + CI
   out_data <- rbind(newdata, newdata_pred)

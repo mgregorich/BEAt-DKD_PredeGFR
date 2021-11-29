@@ -67,7 +67,7 @@ tripod_flowchart <- data.frame("Step"=c("all",  "excl2_baseunder30",  "excl3_nob
                         "DIACORE"=rep(NA,7))
 
 # ------------- Data Pre-processing
-## DIACORE
+## -----  DIACORE -----
 data.diacore <-  read_excel(paste0(DIACORE.path, "BeatDKD_DIACORE_V1_V2R_V3R_13Mar2019_korr_13Aug2019_all_variables_nopw.xlsx"))
 tripod_flowchart$DIACORE[1] <- length(unique(data.diacore$patNr))
 data.diacore$visitDate_char_V1=do.call("c",lapply(data.diacore$visitDate_char_V1, recodeDates))
@@ -105,7 +105,7 @@ data.diacore$Time_cont=ifelse((data.diacore$Time_cat==1), round(difftime(data.di
 data.diacore$Time_cont=ifelse((data.diacore$Time_cat==2), round(difftime(data.diacore$FU2_date,data.diacore$FU0_date,units="days")/365.25,3), data.diacore$Time_cont)
 data.diacore$Time_cat= round(data.diacore$Time_cont)
 
-## GCKD
+## ----- GCKD ------
 data.gckd <- read_excel(paste0(GCKD.path, "Datenanfrage2_export_20210625.xlsx"))
 tripod_flowchart$GCKD[1] <- length(unique(data.gckd$subjid))
 
@@ -161,7 +161,7 @@ data.gckd <- data.gckd %>%
   mutate(Time_cont = round(difftime(FU_date,BL_ein_visdat,units="days")/365.25,3))
 data.gckd$Time_cat <- round(data.gckd$Time_cont)
 
-## PROVALID
+## ---  PROVALID -----
 file = paste0(PROVALID.path, "PROVALID BASE Final Data Export_Clinical_LocalLab_Endpoints_20200119.xls")
 sheets <- excel_sheets(file)
 fu.sheets <- sheets[str_detect(sheets,"LABORATORY")]
@@ -267,7 +267,7 @@ data.all <- data.all %>%
 
 
 
-# ------------ Inclusion & Exclusion criteria
+# ------------ Inclusion & Exclusion criteria ----
 data.all <- data.all %>%
   mutate(BL_uacr_log2=log(BL_uacr,2),
          Cohort=ifelse(Cohort %in% "PROVALID", 1, 0),     # Code PROVALID = 1, GCKD = 0
@@ -312,7 +312,7 @@ tripod_flowchart$DIACORE[5] <- length(unique(data.diacore$PatID))
 
 
 
-# --------- Complete-cases
+# --------- Complete-cases ----
 data.full <- data.all[complete.cases(data.all),]
 data.full$Country <- factor(data.full$Country, levels=c("AT", "GE", "HU", "PL", "UK", "NL"))
 data.rem <- data.all[!complete.cases(data.all),]
@@ -337,3 +337,14 @@ tripod_flowchart$DIACORE[7] <- length(unique(data.diacore$PatID))
 tripod_flowchart
 
 
+# --- True progression estimation ----
+
+tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
+df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope=coef(tmp)$PatID[,1])
+data.full <- left_join(data.full, df.tmp, by="PatID")
+data.full$true.prob <- (data.full$true.slope <= slope_cutpoint)*1
+
+tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.diacore, REML=F, control=lmerControl(optimizer="bobyqa"))
+df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope=coef(tmp)$PatID[,1])
+data.diacore <- left_join(data.diacore, df.tmp, by="PatID")
+data.diacore$true.prob <- (data.diacore$true.slope <= slope_cutpoint)*1

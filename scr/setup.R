@@ -7,7 +7,7 @@
 pacman::p_load(tidyr, plyr, reshape2, ggplot2, openxlsx, stringr, transplantr, skimr,shiny,
                lme4, readxl, purrr, janitor, tableone, dplyr, splitstackshape,r2glmm,
                nlme, lmerTest, MuMIn, JMbayes, splines, rms, Hmisc, concreg, caret, MASS, performance,
-               pmsampsize, broom)
+               pmsampsize, broom, broom.mixed, gridExtra)
 
 
 # ------ Initialization 

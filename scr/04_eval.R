@@ -25,32 +25,35 @@ write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val.xlsx"),
 ################################################################################
 # ----------------------------- Calibration ------------------------------------
 ################################################################################
-# Before update
-# plot_calibration_cont(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$prior.pred, time=1, save=T)
-# plot_calibration_cont(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$prior.pred, time=2, save=T)
-# plot_calibration_cont(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$prior.pred, time=3, save=T)
-# plot_calibration_cont(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$prior.pred, time=4, save=T)
-# plot_calibration_cont(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$prior.pred, time=5, save=T)
-# plot_calibration_cont(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$prior.pred, time=6, save=T)
-# plot_calibration_cont(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$prior.pred, time=7, save=T)
 
-# After update
-plot_calibration_cont(yobs=df.preds[df.preds$Time==1,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==1,]$pred, fit = fit.final, time=1, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==2,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==2,]$pred, fit = fit.final, time=2, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==3,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==3,]$pred, fit = fit.final, time=3, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==4,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==4,]$pred, fit = fit.final, time=4, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==5,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==5,]$pred, fit = fit.final, time=5, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==6,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==6,]$pred, fit = fit.final, time=6, save=T, out.path = out.path)
-plot_calibration_cont(yobs=df.preds[df.preds$Time==7,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==7,]$pred, fit = fit.final, time=7, save=T, out.path = out.path)
+for(t in 2:7){
+  # Before update
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$prior.pred, fit = fit.final, time=t, save=T, out.path = out.path, cohort="dev", type="preUp")
+  # After update
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$pred, fit = fit.final, time=t, save=T, out.path = out.path, cohort="dev", type="postUp")
+}
 
-# Probability of progression
+ggplot(df.preds, aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
+  geom_point() +
+  scale_x_continuous(expand = c(0, 0), name = "Predicted eGFR", limits = c(0,150)) + 
+  scale_y_continuous(expand = c(0, 0), name = "Observed EGFR", limits = c(0,150)) +
+  scale_color_continuous("Time") +
+  scale_fill_continuous("Time") +
+  geom_abline(intercept = 0) + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), text=element_text(size=22)) 
+ggsave(paste0(out.path, "fig_calibration_all_dev_post.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+
+
+# ------ Probability of progression
 pred_prob = df.preds[df.preds$Time==0,]$prob.prog
 true_prob = df.preds[df.preds$Time==0,]$true.prob
-plot_calibration_bin(pred=pred_prob, true=true_prob, out.path = out.path, save=T)
+plot_calibration_bin(pred=pred_prob, true=as.factor(true_prob), out.path = out.path, save=F)
 Brier <- mean((pred_prob-true_prob)^2)
 C.index <- somers2(pred_prob, true_prob)["C"]
 Deviance<- -2*sum(true_prob*log(pred_prob) + (1-true_prob)*log(1-pred_prob) )
-print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), " and deviance = ", round(Deviance,2)))
+CS <- lm(true_prob ~ pred_prob)$coefficients[2]
+print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), ", calibration slope = ",round(CS,2)," and deviance = ", round(Deviance,2)))
 
 
 
@@ -79,6 +82,22 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev.png"),width=10, height=6)
+
+df.melt.small <- df.melt[df.melt$PatID %in% "PV14750",]
+ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
+  geom_ribbon(aes(x=Time, ymax=pred.upp, ymin=pred.low), fill="blue", alpha=.05) +
+  geom_point(size=1) +
+  geom_line(data=df.melt.small[!is.na(df.melt.small$value),], aes(color=variable)) +
+  scale_linetype_manual(values=c("solid", "solid", "dashed", "dashed")) +
+  scale_color_manual(values=c("black", "blue", "red", "red"), labels=c("Observed", "Predicted", "95% CI", "95% CI")) +
+  scale_x_continuous(expand=c(0,0),breaks = seq(0,8,1), limits = c(0,8)) +
+  scale_y_continuous(expand=c(0,0), "eGFR") +
+  ggtitle("") +
+  theme_bw() +
+  facet_wrap(~PatID) +
+  theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
+
+
 
 # ---- subject specific trajectories, comparing updated and no-update predictions
 df.melt_0 <- melt(df.preds[df.preds$Time==0,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
@@ -121,16 +140,21 @@ ggplot(df.preds,aes(x = Time, y = FU_eGFR_epi, fill=Country))  +
   theme(text = element_text(size=16))
 ggsave(paste0(out.path, "fig_longiObs_eGFR.png"),width=12, height=6)
 
+
 # Longitudinal trajectory of predicted eGFR per cohort
-df.preds$Cohort <- as.factor(df.preds$Cohort)
-ggplot(df.preds,aes(x = Time, y = FU_eGFR_epi, fill=Cohort))  +
-  geom_boxplot(aes(x=Time, fill=Cohort), outlier.shape = NA) +
-  stat_boxplot(aes(fill=Cohort),geom ='errorbar') +
-  scale_y_continuous("Observed eGFR") +
-  scale_fill_manual(values=c("orange1", "royalblue1"), labels=c("GCKD", "PROVALID")) +
+df.tmp <- data.frame(rbind(df.preds[,c("Time_cat", "FU_eGFR_epi", "Cohort")], data.diacore[,c("Time_cat", "FU_eGFR_epi", "Cohort")]))
+df.tmp$Cohort <- as.factor(df.tmp$Cohort)
+df.tmp$Time_cat <- as.factor(df.tmp$Time_cat)
+df.tmp <- df.tmp[!is.na(df.tmp$Time_cat),]
+ggplot(df.tmp,aes(x = Time_cat, y = FU_eGFR_epi, fill=Cohort))  +
+  geom_boxplot(outlier.shape = NA) +
+  stat_boxplot(geom ='errorbar') +
+  scale_y_continuous(expand=c(0,0),"Observed eGFR", lim=c(0,150), breaks=seq(0,150,25)) +
+  scale_x_discrete("Time") +
+  scale_fill_manual(values=c("skyblue1", "royalblue1", "lightgreen"), labels=c("GCKD", "PROVALID", "DIACORE")) +
   theme_bw() +
   theme(text = element_text(size=16))
-ggsave(paste0(out.path, "fig_longiobs_eGFR_cohort_dev.png"),width=10, height=6)
+ggsave(paste0(out.path, "fig_longiobs_eGFR_cohort.png"),width=10, height=6)
 
 
 
@@ -202,8 +226,12 @@ summary(df.preds.t0[df.preds.t0$Cohort==0,]$prob.prog)
 summary(df.preds.t0[df.preds.t0$Cohort==1,]$prob.prog)
 
 
-# ---- Partial explained variance of individual predictors
 
+##########################################################################
+# ---------- Partial explained variance of individual predictors ---------
+##########################################################################
+
+# (1) With partR2 function
 #remotes::install_github("mastoffel/partR2") 
 library(partR2)
 library(future)
@@ -213,28 +241,49 @@ pred.vars <- c("BL_age","BL_sex","BL_bmi", "BL_smoking", "BL_map",
                "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr_log2",
                "BL_med_dm", "BL_med_bp", "BL_med_lipid")
 
-plan(multisession, workers=detectCores()*.60)
-partial.R2.cond <- partR2(fit.final, partvars = pred.vars,
-       R2_type = "conditional", nboot=10, parallel=T, 
-       max_level = 1,allow_neg_r2 = T)
-partial.R2.marg <- partR2(fit.final, partvars = pred.vars,
-                          R2_type = "marginal", nboot=10, parallel=T, 
-                          max_level = 1,allow_neg_r2 = T)
-plan(sequential)
+# plan(multisession, workers=detectCores()*.60)
+# partial.R2.cond <- partR2(fit.final, partvars = pred.vars,
+#        R2_type = "conditional", nboot=10, parallel=T, 
+#        max_level = 1,allow_neg_r2 = T)
+# partial.R2.marg <- partR2(fit.final, partvars = pred.vars,
+#                           R2_type = "marginal", nboot=10, parallel=T, 
+#                           max_level = 1,allow_neg_r2 = T)
+# plan(sequential)
+# 
+# partial.R2.cond <- partial.R2.cond$R2 %>% 
+#   data.frame() %>% 
+#   mutate(drop.R2=first(estimate)-estimate) %>%
+#   mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
+# 
+# partial.R2.marg <- partial.R2.marg$R2 %>% 
+#   data.frame() %>% 
+#   mutate(drop.R2=first(estimate)-estimate) %>%
+#   mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
+# 
+# partial.R2 <- list("Marginal"=partial.R2.marg, "Conditional"=partial.R2.cond)
+# 
+# write.xlsx(partial.R2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = TRUE)
 
-partial.R2.cond <- partial.R2.cond$R2 %>% 
-  data.frame() %>% 
-  mutate(drop.R2=first(estimate)-estimate) %>%
-  mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
 
-partial.R2.marg <- partial.R2.marg$R2 %>% 
-  data.frame() %>% 
-  mutate(drop.R2=first(estimate)-estimate) %>%
-  mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
-
-partial.R2 <- list("Marginal"=partial.R2.marg, "Conditional"=partial.R2.cond)
-
-#saveRDS(partial.R2, paste0(out.path,"model_partialR2.rds"))
-write.xlsx(partial.R2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = TRUE)
-
+# (1) Manual
+r2.final <- r.squaredGLMM(fit.final)
+out <- list()
+for(i in 1:length(pred.vars)){
+  model.vars <- pred.vars[-i]
+  model.formula <- as.formula(paste0("FU_eGFR_epi ~ (Time + Time  *(",paste(model.vars,collapse="+") ,") + (1|Country) + (1+Time|PatID))"))
+  fit.tmp <- lmer(model.formula,
+                  data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
+  r2 <- r.squaredGLMM(fit.tmp)
+  drop.r2 <- r2.final - r2
+  
+  out[[i]] <- c("pred.vars"=pred.vars[i], "R2m"=r2[1], "R2c"=r2[2], "drop.R2m"=drop.r2[1], "drop.R2c"=drop.r2[2])
+}
+res <- do.call(rbind, out)
+tmp <- res %>%
+  data.frame() %>%
+  mutate_at(2:5, as.numeric) %>%
+  mutate(scaled.dropR2m = (drop.R2m/sum(drop.R2m))*first(R2m),
+         scaled.dropR2c = (drop.R2c/sum(drop.R2c))*first(R2c)) %>%
+  mutate_at(2:7, round, 4)
+tmp  
 

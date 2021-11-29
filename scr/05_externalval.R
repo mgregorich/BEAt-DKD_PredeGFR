@@ -5,10 +5,10 @@
 ###################################################
 
 
-# rm(list=ls())
-# 
-# source("scr/setup.R")
-# source("scr/01_dataprep.R", print.eval=F)
+rm(list=ls())
+
+source("scr/setup.R")
+source("scr/01_dataprep.R", print.eval=F)
 
 # ------------ Model validation ---------------------------
 risk_model <- readRDS(file.path(out.path, "riskpred_model.rds"))
@@ -25,35 +25,58 @@ res <- LongPred_ByBase_lmer(lmerObject=risk_model,
 
 # Summarize and prepare output
 data.diacore$Time <- round(data.diacore$Time,0)
-data.diacore.new <- full_join(data.diacore, res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
+data.diacore.new <- full_join(data.diacore, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
 
 
-# Calibration plot
 
-plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==2,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==2,]$pred, fit = risk_model,
-                 cohort="extval", time=2, save=T, out.path = out.path)
-plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==3,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==3,]$pred, fit = risk_model,
-                      cohort="extval", time=3, save=T, out.path = out.path)
-plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==4,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==4,]$pred, fit = risk_model, 
-                      cohort="extval", time=4, save=T, out.path = out.path)
-plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==5,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==5,]$pred, fit = risk_model, 
-                      cohort="extval", time=5, save=T, out.path = out.path)
-plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==6,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==6,]$pred, fit = risk_model, 
-                      cohort="extval", time=6, save=T, out.path = out.path)
-plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==7,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==7,]$pred, fit = risk_model, 
-                      cohort="extval", time=7, save=T, out.path = out.path)
+# --- Calibration plot
+for(t in 2:7){
+  plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==t,]$prior.pred, fit = risk_model,
+                        cohort="extval", time=t, save=T, out.path = out.path, type="preUp")
+  plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==t,]$pred, fit = risk_model,
+                        cohort="extval", time=t, save=T, out.path = out.path, type="postUp")}
+
+ggplot(data.diacore.new, aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
+  geom_point() +
+  scale_x_continuous(expand = c(0, 0), name = "Predicted eGFR", limits = c(0,150)) + 
+  scale_y_continuous(expand = c(0, 0), name = "Observed EGFR", limits = c(0,150)) +
+  scale_color_continuous("Time") +
+  scale_fill_continuous("Time") +
+  geom_abline(intercept = 0) + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), text=element_text(size=22)) 
+ggsave(paste0(out.path, "fig_calibration_all_diacore_post.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+
+df <- melt(data.diacore.new[,c("Time_cont","FU_eGFR_epi", "pred","prior.pred")], id.vars = c("Time_cont", "FU_eGFR_epi"))
+levels(df$variable) <- c("Post-update", "Pre-update")
+df$variable <- relevel(df$variable, "Pre-update")
+
+ggplot(df, aes(x=value, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
+  geom_point() +
+  scale_x_continuous(expand = c(0, 0), name = "Predicted eGFR", limits = c(0,150)) + 
+  scale_y_continuous(expand = c(0, 0), name = "Observed EGFR", limits = c(0,150)) +
+  scale_color_continuous("Time") +
+  scale_fill_continuous("Time") +
+  geom_abline(intercept = 0) + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5), text=element_text(size=16), strip.text = element_text(size = 18)) +
+  facet_wrap(~variable)
+ggsave(paste0(out.path, "fig_calibration_all_diacore_prepost.tiff"),  width=12, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
-# Model performance and validation
+
+# --- Model performance and validation
 tbl_tmp <- lapply(sort(unique(data.diacore.new$Time)), function(x) eval_preds(pred=data.diacore.new[data.diacore.new$Time==x,]$pred, 
                                                                               obs=data.diacore.new[data.diacore.new$Time==x,]$FU_eGFR_epi, 
                                                                               lmerObject = risk_model))
-tbl_performance <- data.frame("Time"=sort(unique(data.diacore.new$Time)),round(do.call(rbind, tbl_tmp),3))
-write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval.xlsx"), 
-           overwrite = TRUE)
+time.perf <- data.frame("Time"=sort(unique(data.diacore.new$Time)),round(do.call(rbind, tbl_tmp),3))
+ov.perf <- eval_preds(data.diacore.new[!data.diacore.new$Time==0,]$pred, data.diacore.new[!data.diacore.new$Time==0,]$FU_eGFR_epi, lmerObject = risk_model)
+tbl_performance <- list("overall"=ov.perf, "time-specific"=time.perf)
+write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval.xlsx"), overwrite = TRUE)
 
 
-# Probability of progression
+
+# --- Probability of progression
 data.diacore.new.t0 <- data.diacore.new[data.diacore.new$Time==0,]
 
 ggplot(data.diacore.new.t0, aes(x=prob.prog)) +
@@ -62,11 +85,11 @@ ggplot(data.diacore.new.t0, aes(x=prob.prog)) +
   scale_y_continuous(expand=c(0,0),"Density") +
   theme_bw() +
   theme(text = element_text(size=18), legend.position = "bottom", legend.title = element_blank()) 
-ggsave(paste0(out.path, "fig_prob_progression_SC",abs(slope_cutpoint),"_extval.png"),
-       width=8, height=6)
+ggsave(paste0(out.path, "fig_prob_progression_SC",abs(slope_cutpoint),"_extval.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
-# Subject-specific trajectories
+
+# --- Subject-specific trajectories
 set.seed(666)
 df.melt <- melt(data.diacore.new[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.low", "pred.upp")], id.vars = c("PatID","Time", "pred.low", "pred.upp"))
 df.melt.small <- df.melt[df.melt$PatID %in% c(sample(unique(df.melt$PatID),16)),]
@@ -83,5 +106,5 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   theme_bw() +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
-ggsave(paste0(out.path, "fig_indvPred_eGFR_diacore_extval.png"),width=10, height=6)
+ggsave(paste0(out.path, "fig_indvPred_eGFR_diacore_extval.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 

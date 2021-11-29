@@ -12,6 +12,11 @@
 table(data.full[!duplicated(data.full$PatID),]$Cohort)
 table(data.full[!duplicated(data.full$PatID),]$Country)
 
+# Number of time points per cohort
+table(data.full[data.full$Cohort==0,]$Time_cat)
+table(data.full[data.full$Cohort==1,]$Time_cat)
+table(data.diacore$Time_cat)
+
 
 # Distribution of baseline variables between PROVALID and GCKD
 data.all %>% 
@@ -62,11 +67,26 @@ par(mfrow = c(1,1))
 
 
 # ---------- Correlation matrix
-x_tmp <- model.matrix(FU_eGFR_epi~BL_age + BL_sex + BL_smoking + BL_bmi + BL_bpsys + BL_bpdia + BL_hba1c_perc 
-                      + BL_serumchol + BL_hemo + BL_uacr + BL_med_dm + BL_med_bp + BL_med_lipid, 
-                      data=data.full[data.full$Time_cat==0,])[,-1]
-corr <- abs(cor(x_tmp))
-(corr>0.5)
+x_tmp <- data.frame(model.matrix(FU_eGFR_epi~BL_age + BL_sex + BL_smoking + BL_bmi + BL_map + BL_hba1c 
+                      + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid, 
+                      data=data.full[data.full$Time_cat==0,])[,-1])
+colnames(x_tmp) <- c("Age", "Sex", "Smoking", "BMI", "MAP", "Hba1C", "Serum chol.", "Hemoglobin", "log2UACR", "Glucose-low. Med.", "BP-low. Med.", "Lipid-low. Med.")
+corr <- cor(x_tmp)
+(abs(corr)>0.5)
+
+melted_cormat <- melt(round(corr,2))
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile(color = "white")+
+  scale_x_discrete("") +
+  scale_y_discrete("") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Pearson\nCorrelation") +
+  theme_bw() +
+  theme(legend.position = "right", text=element_text(size=16),
+        axis.text.x = element_text(angle = 45, hjust=1), 
+        legend.text = element_text(size=12), legend.title = element_text(size=14))
+ggsave(paste0(out.path, "fig_correlation.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 # ------ Bivariate distribution
@@ -107,51 +127,26 @@ summary(data.full[data.full$Time_cat==7,]$Time_cont)
 
 
 
-# --- Average decline of eGFR per year
+# --- Median and IQR of eGFR decline per year & true progression estimation
 
-# Overall
-tmp <- data.full %>%
-  group_by(PatID) %>%
-  dplyr::summarize(eGFRslope = summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2])
-#summary(tmp$eGFRslope)
+summary(data.full[data.full$Cohort==0,]$true.slope)
+summary(data.full[data.full$Cohort==1,]$true.slope)
+summary(data.diacore$true.slope)
 
-# Per cohort
-tmp <- data.full %>%
-  dplyr::filter(Cohort==0) %>%
-  group_by(PatID) %>%
-  dplyr::summarize(eGFRslope = summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2])
-#summary(tmp$eGFRslope)
+
+# --- Average years of follow-up
 
 tmp <- data.full %>%
-  dplyr::filter(Cohort==1) %>%
   group_by(PatID) %>%
-  dplyr::summarize(eGFRslope = summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2])
-#summary(tmp$eGFRslope)
+  summarise(max_time=max(Time_cont))
+mean(tmp$max_time)
+hist(tmp$max_time)
 
 tmp <- data.diacore %>%
   group_by(PatID) %>%
-  dplyr::summarize(eGFRslope = summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2])
-#summary(tmp$eGFRslope)
-
-
-data.full<- data.full %>%
-  group_by(PatID) %>%
-  mutate(eGFR_decline_yearly = ifelse(abs(Time_cat-lag(Time_cat)) %in% c(2,4,6), (FU_eGFR_epi - lag(FU_eGFR_epi))/2, FU_eGFR_epi - lag(FU_eGFR_epi)))
-
-tmp <- data.full[data.full$PatID %in% data.full[which.max(data.full$eGFR_decline_yearly),]$PatID,]
-ggplot(tmp, aes(x=Time_cat, y=FU_eGFR_epi, group=PatID, fill=PatID, col=PatID)) +
-  geom_line(size=0.8)+
-  geom_point() +
-  theme_bw() +
-  theme(text=element_text(size=18), legend.position = "top")
-
-tmp <- data.full[data.full$PatID %in% data.full[which(abs(data.full$eGFR_decline_yearly)>90),]$PatID,]
-
-ggplot(tmp, aes(x=Time_cat, y=FU_eGFR_epi, group=PatID, fill=PatID, col=PatID)) +
-  geom_line(size=0.8)+
-  geom_point() +
-  theme_bw() +
-  theme(text=element_text(size=18), legend.position = "top")
+  summarise(max_time=max(Time_cont))
+mean(tmp$max_time)
+hist(tmp$max_time)
 
 #####################################################################################################
 # ------------------------------ TABLE 1 -----------------------------------

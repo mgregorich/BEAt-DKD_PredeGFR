@@ -35,21 +35,13 @@ res <- LongPred_ByBase_lmer(lmerObject=fit.final, newdata = data.full.t0, timeVa
 data.full$Time <- round(data.full$Time,0)
 data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
 
-# Before update
-plot_calibration_cont(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$prior.pred, fit=fit.final, time=1)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==2,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==2,]$prior.pred, fit=fit.final, time=2)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==3,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==3,]$prior.pred, fit=fit.final, time=3)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==4,]$prior.pred, fit=fit.final, time=4)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$prior.pred, fit=fit.final, time=5)
-
-# After update
-plot_calibration_cont(yobs=data.preds[data.preds$Time==1,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==1,]$pred, fit=fit.final, time=1)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==2,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==2,]$pred, fit=fit.final, time=2)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==3,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==3,]$pred, fit=fit.final, time=3)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==4,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==4,]$pred, fit=fit.final, time=4)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==5,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==5,]$pred, fit=fit.final, time=5)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==6,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==6,]$pred, fit=fit.final, time=6)
-plot_calibration_cont(yobs=data.preds[data.preds$Time==7,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==7,]$pred, fit=fit.final, time=7)
+for(t in 1:7){
+  #Before update
+  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$prior.pred, fit = fit.final,
+                        cohort="dev", time=t, save=F, out.path = out.path, type="preUp")
+  #After update
+  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$pred, fit = fit.final,
+                        cohort="dev", time=t, save=F, out.path = out.path, type="postUp")}
 
 
 # ----- Final model
@@ -70,10 +62,34 @@ plot_calibration_cont(yobs=data.preds[data.preds$Time==7,]$FU_eGFR_epi, yhat=dat
 ################################################################################
 # ------------------ Internal validation (Model accuracy) ----------------------
 ################################################################################
-# Fitted values vs standardized residuals
-plot(fit.final, resid(., scaled=TRUE) ~ fitted(.), abline = 0)
 
-# Linearity in each variables
+# ---- Residual check
+df_model[".stdresid"] <- resid(fit.final, type = "pearson")
+
+# Fitted values vs standardized residuals
+p1 <- ggplot(df_model, aes(.fitted, .resid)) + 
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se=FALSE) +
+  scale_x_continuous("Fitted Values") +
+  scale_y_continuous("Standardized Residuals") +
+  theme_bw() +
+  theme(text=element_text(size=16))
+
+# QQ Plot - Normality of residuals: qqnorm(residuals(fit.final))
+p2 <- ggplot(df_model, aes(sample = .stdresid)) +
+  geom_qq() +
+  geom_qq_line() +
+  scale_x_continuous("Sample Quantiles") +
+  scale_y_continuous("Theoretical Quantiles") +
+  theme_bw() +
+  theme(text=element_text(size=16))
+
+p3<-grid.arrange(p1,p2)
+ggsave(paste0(out.path, "fig_residual_analysis.tiff"), plot=p3  ,width=10, height=6, device='tiff', dpi=350, compression = 'lzw')
+
+
+# ---- Linearity in each variables
 ggplot(data.frame(x1=data.full$BL_serumchol,residual=resid(fit.final, scaled=TRUE), time=data.full$Time),
        aes(x=x1,y=residual, color=time)) +
   geom_smooth(se=T) +
@@ -93,9 +109,6 @@ ggplot(data.frame(x1=as.factor(data.full$Time),residual=resid(fit.final, scaled=
   # geom_smooth(se=T) +
   theme_bw() 
 
-# Normality of residuals
-plot(qqnorm(residuals(fit.final)))
-points(qqline(residuals(fit.final)))
 
 
 ################################################################################
@@ -129,7 +142,7 @@ for(i in 1:f){
   
   # Summarize and prepare output
   data.test$Time <- round(data.test$Time,0)
-  data.test.new <- full_join(data.test, res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
+  data.test.new <- full_join(data.test, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
   data.test.new$fold <- i
   data.test.new$Country <- data.test$Country[1]
   data.test.new$Cohort <- data.test$Cohort[1]
@@ -141,26 +154,9 @@ for(i in 1:f){
   df.res[[i]] <- data.frame("Fold"=i,"Time"=unique(data.full$Time),do.call(rbind, res))
 }
 
-# Concatenate
+
+# --- Concatenate
 df.preds <- do.call(rbind, df.pred)
 df.stats <- do.call(rbind, df.res)
 df.reeff <- do.call(rbind, df.re)
-
-
-
-################################################################################
-# ---------------------------- "True" probability of progression ---------------
-################################################################################
-
-true.prog <- df.preds %>%
-  mutate(Time=as.numeric(Time)) %>%
-  group_by(PatID) %>%
-  do(broom::tidy(lm(FU_eGFR_epi ~ Time,  data = .))) %>%
-  filter(term %in% "Time") %>%
-  dplyr::select(PatID, estimate) %>%
-  `colnames<-`(c("PatID", "true.slope")) %>%
-  mutate(true.prob = (true.slope <= slope_cutpoint)*1) %>%
-  data.frame()
-
-df.preds <- left_join(df.preds, true.prog, by="PatID")
 
