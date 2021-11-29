@@ -53,7 +53,7 @@ Brier <- mean((pred_prob-true_prob)^2)
 C.index <- somers2(pred_prob, true_prob)["C"]
 Deviance<- -2*sum(true_prob*log(pred_prob) + (1-true_prob)*log(1-pred_prob) )
 CS <- lm(true_prob ~ pred_prob)$coefficients[2]
-print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), ", calibration slope = ",round(CS,2)," and deviance = ", round(Deviance,2)))
+cat(paste0("RISK ASSESSMENT: \nBrier = ", round(Brier,2), ", C statistic = ", round(C.index,2), ", calibration slope = ",round(CS,2)," and deviance = ", round(Deviance,2)),"\n")
 
 
 

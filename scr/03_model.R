@@ -64,6 +64,7 @@ for(t in 1:7){
 ################################################################################
 
 # ---- Residual check
+df_model <- augment(fit.final)
 df_model[".stdresid"] <- resid(fit.final, type = "pearson")
 
 # Fitted values vs standardized residuals
