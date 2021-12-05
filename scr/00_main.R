@@ -4,7 +4,7 @@
 # Info: Linear mixed effects model for the prediction of eGFR (BEAt-DKD)
 ###################################################
 
-rm(list=ls())
+#rm(list=ls())
 set.seed(12345)
 # Initialise global values
 

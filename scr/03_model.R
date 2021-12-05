@@ -7,7 +7,7 @@
 
 
 # -------- Data preparation, initial data analysis and general functions
-# 
+# # 
 # rm(list = ls())
 # source("scr/setup.R")
 # source("scr/01_dataprep.R", print.eval=F)
@@ -33,14 +33,14 @@ data.full.t0$Country <- "Unknown"
 res <- LongPred_ByBase_lmer(lmerObject=fit.final, newdata = data.full.t0, timeVar = "Time", idVar="PatID", idVar2="Country",
                        times = unique(data.full$Time_cat)[-1], all_times=F)
 data.full$Time <- round(data.full$Time,0)
-data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
+data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
 
 for(t in 1:7){
   #Before update
-  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$prior.pred, fit = fit.final,
+  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$prior.pred,
                         cohort="dev", time=t, save=F, out.path = out.path, type="preUp")
   #After update
-  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$pred, fit = fit.final,
+  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$pred, 
                         cohort="dev", time=t, save=F, out.path = out.path, type="postUp")}
 
 
@@ -117,47 +117,20 @@ ggplot(data.frame(x1=as.factor(data.full$Time),residual=resid(fit.final, scaled=
 ################################################################################
 
 set.seed(123)
+j=1; b=3
+
+# Crossvalidated predictions
 data.full$fold <- as.numeric(data.full$Country)
-df.pred <- df.res <- df.re <- list()
-f = length(unique(data.full$Country))
-i=1
-
-for(i in 1:f){
-  print(i)
-  data.train <- data.full[data.full$fold != i, ] 
-  data.test <- data.full[data.full$fold == i, ] 
- 
-  fit.lmer <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
-                                                  BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
-                  data=data.train, REML=F, control=lmerControl(optimizer="bobyqa"))
-  
-  # Update prediction with BL value
-  data.test.t0 <- data.test[data.test$Time==0,]
-  data.test.t0$Country <- "Unknown"
-  res <- LongPred_ByBase_lmer(lmerObject=fit.lmer, 
-                         newdata = data.test.t0, 
-                         cutpoint = slope_cutpoint,
-                         timeVar = "Time", idVar="PatID", idVar2="Country",
-                         times =unique(data.full$Time_cat)[-1], 
-                         all_times=F)
-  
-  # Summarize and prepare output
-  data.test$Time <- round(data.test$Time,0)
-  data.test.new <- full_join(data.test, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")], by=c("PatID", "Time"))
-  data.test.new$fold <- i
-  data.test.new$Country <- data.test$Country[1]
-  data.test.new$Cohort <- data.test$Cohort[1]
-  df.pred[[i]] <- data.test.new
-  df.re[[i]] <- data.frame("PatID"= data.test.t0$PatID, "Fold"= i, res$RE.est)
-  
-  data.test.list <- split(data.test.new, as.factor(data.test.new$Time)) 
-  res <- lapply(data.test.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi, lmerObject=fit.lmer))
-  df.res[[i]] <- data.frame("Fold"=i,"Time"=unique(data.full$Time),do.call(rbind, res))
-}
+res <- intext_crossvalidate(data.full,NA, return_preds = T)
+df.preds <- res$pred
 
 
-# --- Concatenate
-df.preds <- do.call(rbind, df.pred)
-df.stats <- do.call(rbind, df.res)
-df.reeff <- do.call(rbind, df.re)
+# Crossvalidated performance measures
+plan(multisession, gc=T, workers=detectCores()*.6)
+res_cv_boot <- future_lapply(1:b, function(x)  intext_crossvalidate(draw_bootstrap_sample(data.full),x, return_preds = F), future.seed = T)
+plan(sequential)
+df.stats <- data.frame(do.call(rbind, lapply(res_cv_boot, `[[`, 1)))
+
+
+
 

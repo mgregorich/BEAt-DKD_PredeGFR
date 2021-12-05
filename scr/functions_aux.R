@@ -27,6 +27,10 @@ right_rows <- function (data, times, ids, Q_points) {
 }
 
 
+round_0 <- function(x, digits){
+  return(sprintf(paste0('%.',digits,'f'),x))
+}
+
 # -------------------------- MODELLING --------------------
 
 adjusted_R2 <- function(pred, obs, N, k){
@@ -46,35 +50,96 @@ eval_preds <- function(pred, obs, lmerObject){
   df <- data.frame(pred=pred, obs=obs)
   df <- df[complete.cases(df),]
   
-  r2 <- r.squaredGLMM(lmerObject)
-  adj.r2 <- adjusted_R2(pred, obs, N=length(unique(lmerObject@frame$PatID)), k=sum(anova(lmerObject)$NumDF))
-  CS <- ifelse(all(is.na(df$obs)),NA, lm(df$obs ~ df$pred)$coefficients[2])
-  
-  if(sum(!is.na(obs))>25){
-    Cind <- ifelse(all(is.na(df$obs)),NA,c_index(pred=df$pred, obs=df$obs))
-  }else{Cind<-NA}
+  if(sum(!is.na(obs))>100){
+    r2mm <- r.squaredGLMM(lmerObject)
+    r2 <- cor(pred,obs, use="pairwise.complete.obs")^2
+    CS <- lm(df$obs ~ df$pred)$coefficients[2]
+    Cind <- c_index(pred=df$pred, obs=df$obs)
+    rmse.val <- RMSE(df$pred, df$obs)
+    mae.val <- MAE(df$pred, df$obs)
+    cil.val <- mean(df$obs)- mean(df$pred)
+  }else{r2 <- r2mm <- CS <- rmse.val <- mae.val <- cil.val <- Cind<-NA}
 
   res <- data.frame(Nobs = sum(!is.na(df$obs)),
-                    R2marg = r2[1],
-                    R2cond = r2[2],
-                    adjR2 = adj.r2,
-                    RMSE = RMSE(df$pred, df$obs),
-                    MAE = MAE(df$pred, df$obs),
-                    CalbinLarge = mean(df$obs)- mean(df$pred),
+                    R2marg = r2mm[1],
+                    R2cond = r2mm[2],
+                    R2 = r2,
+                    RMSE = rmse.val,
+                    MAE = mae.val,
+                    CalbinLarge = cil.val,
                     CalbSlope=CS,
                     C = Cind)
   return(res)
+}
+
+draw_bootstrap_sample <- function(data.tmp){
+  pats.boot <- data.tmp %>%
+    filter(Time==0) %>%
+    group_by(Country) %>%
+    sample_frac(2/3, replace=T) %>%
+    dplyr::select(PatID) %>%
+    data.frame()
+  data.boot <- data.tmp[data.tmp$PatID %in% pats.boot$PatID,]
+  data.boot$fold <- as.numeric(data.boot$Country)
+  
+  return(data.boot)
+}
+
+
+intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
+  df.pred <- df.res <- df.re <- list()
+  c = length(unique(data.full$Country))
+  i=1
+  for(i in 1:c){
+    data.train <- data.boot[data.boot$fold != i, ] 
+    data.test <- data.boot[data.boot$fold == i, ] 
+    
+    fit.lmer <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+                                                     BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
+                     data=data.train, REML=F, control=lmerControl(optimizer="bobyqa"))
+    
+    # Update prediction with BL value
+    data.test.t0 <- data.test[data.test$Time==0,]
+    data.test.t0$Country <- "Unknown"
+    res <- LongPred_ByBase_lmer(lmerObject=fit.lmer, 
+                                newdata = data.test.t0, 
+                                cutpoint = slope_cutpoint,
+                                timeVar = "Time", idVar="PatID", idVar2="Country",
+                                times =unique(data.boot$Time_cat)[-1], 
+                                all_times=F)
+    
+    # Summarize and prepare output
+    data.test$Time <- round(data.test$Time,0)
+    data.test.new <- full_join(data.test, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
+    data.test.new$fold <- i
+    data.test.new$Country <- data.test$Country[1]
+    data.test.new$Cohort <- data.test$Cohort[1]
+    df.pred[[i]] <- data.test.new
+    df.re[[i]] <- data.frame("PatID"= data.test.t0$PatID, "Fold"= i, res$RE.est)
+    
+    data.test.list <- split(data.test.new, as.factor(data.test.new$Time)) 
+    res <- lapply(data.test.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi, lmerObject=fit.lmer))
+    ov.perf <- eval_preds(data.test.new[!data.test.new$Time==0,]$pred, data.test.new[!data.test.new$Time==0,]$FU_eGFR_epi, lmerObject = fit.lmer)
+    df.res[[i]] <- data.frame("Boot"=b.nr,"Fold"=i,"Time"=c(100,unique(data.boot$Time)),rbind( ov.perf, do.call(rbind, res)))
+  }
+  
+  if(return_preds){
+    out <- list("pred"=do.call(rbind, df.pred), "res"=do.call(rbind, df.res), "re"=do.call(rbind, df.re))
+  }else{
+    out <- list("res"=do.call(rbind, df.res))
+  }
+  
+  return(out)
 }
 
 
 
 # ------------------------------ PLOTS ------------------------
 
-plot_calibration_cont <- function(yobs, yhat, fit=NULL, time="Not specified!", cohort="dev",save=F, type="postUp",
+plot_calibration_cont <- function(yobs, yhat, time="Not specified!", cohort="dev",save=F, type="postUp",
                              out.path = "."){
   df <- data.frame(yobs=yobs, yhat=yhat)
-  if(!is.null(fit)){res <- round(eval_preds(pred=yhat, obs = yobs, lmerObject=fit),3)}
-  
+
   # Plot
   p <- ggplot(df, aes(x=yhat, y=yobs)) +
     geom_point() +
@@ -85,14 +150,8 @@ plot_calibration_cont <- function(yobs, yhat, fit=NULL, time="Not specified!", c
     theme_bw() +
     theme(plot.title = element_text(hjust = 0.5), text=element_text(size=18)) 
 
-  if(save){ggsave(paste0(out.path, "fig_cal_",cohort,"_t",time,"_",type,".png"),width=8, height=8)
-  }else{
-    p<- p +
-      annotate("text", x = 25, y = 125, label = paste0("R2 = ",res$adjR2,
-                                                       "\nC-index = ", res$C, 
-                                                       "\nCalLarge = ", res$CalbinLarge, 
-                                                       "\nCalSlope = ", res$CalbSlope))}
-    print(p)  
+  if(save){ggsave(paste0(out.path, "fig_cal_",cohort,"_t",time,"_",type,".png"),width=8, height=8)}
+  print(p)  
 }
 
 plot_calibration_bin <- function(pred, true, out.path, save=F){
@@ -397,14 +456,14 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   out_data$pred <- c(fitted_y, y_hat_time)
   out_data$Time_cat <- out_data$Time
   out_data$prior.pred <- c(pred_y_i0, pred_y_it)
-  out_data$pred.low <- c(rep(NA, length(pred_y_i0)), low)
-  out_data$pred.upp <- c(rep(NA, length(pred_y_i0)), upp)
+  out_data$pred.lo <- c(rep(NA, length(pred_y_i0)), low)
+  out_data$pred.up <- c(rep(NA, length(pred_y_i0)), upp)
   
   times_rep <- c(sapply(times_to_pred, length))
-  out_data$slope <- c(dyit_hat, rep(dyit_hat, times_rep))
-  out_data$slope.low <- c(low.dyi, rep(low.dyi, times_rep))
-  out_data$slope.upp <- c(upp.dyi, rep(upp.dyi, times_rep))
-  out_data$prob.prog <- c(prob.prog, rep(prob.prog, times_rep))
+  out_data$pred.slope <- c(dyit_hat, rep(dyit_hat, times_rep))
+  out_data$pred.slope.lo <- c(low.dyi, rep(low.dyi, times_rep))
+  out_data$pred.slope.up <- c(upp.dyi, rep(upp.dyi, times_rep))
+  out_data$pred.prob <- c(prob.prog, rep(prob.prog, times_rep))
   
   out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
   
@@ -655,14 +714,14 @@ LongPred_ByBase_lme <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL
   out_data$pred <- c(fitted_y, y_hat_time)
   out_data$Time_cat <- out_data$Time
   out_data$prior.pred <- c(pred_y_i0, pred_y_it)
-  out_data$pred.low <- c(rep(NA, length(pred_y_i0)), low)
-  out_data$pred.upp <- c(rep(NA, length(pred_y_i0)), upp)
+  out_data$pred.lo <- c(rep(NA, length(pred_y_i0)), low)
+  out_data$pred.up <- c(rep(NA, length(pred_y_i0)), upp)
   
   times_rep <- c(sapply(times_to_pred, length))
-  out_data$slope <- c(dyit_hat, rep(dyit_hat, times_rep))
-  out_data$slope.low <- c(low.dyi, rep(low.dyi, times_rep))
-  out_data$slope.upp <- c(upp.dyi, rep(upp.dyi, times_rep))
-  out_data$prob.prog <- c(prob.prog, rep(prob.prog, times_rep))
+  out_data$pred.slope <- c(dyit_hat, rep(dyit_hat, times_rep))
+  out_data$pred.slope.lo <- c(low.dyi, rep(low.dyi, times_rep))
+  out_data$pred.slope.up <- c(upp.dyi, rep(upp.dyi, times_rep))
+  out_data$pred.prob <- c(prob.prog, rep(prob.prog, times_rep))
   
   out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
   

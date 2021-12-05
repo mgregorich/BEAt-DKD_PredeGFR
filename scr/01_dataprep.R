@@ -339,12 +339,27 @@ tripod_flowchart
 
 # --- True progression estimation ----
 
+
+
+
+df.tmp <- data.full %>%
+  group_by(PatID) %>%
+  summarise(eGFRslope=summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2]) %>%
+  data.frame() %>%
+  `colnames<-`(c("PatID", "true.slope"))
+
+data.full <- left_join(data.full, df.tmp, by="PatID")
 tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
-df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope=coef(tmp)$PatID[,1])
+df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope.mm=coef(tmp)$PatID[,1])
 data.full <- left_join(data.full, df.tmp, by="PatID")
 data.full$true.prob <- (data.full$true.slope <= slope_cutpoint)*1
 
-tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.diacore, REML=F, control=lmerControl(optimizer="bobyqa"))
-df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope=coef(tmp)$PatID[,1])
+#tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.diacore, REML=F, control=lmerControl(optimizer="bobyqa"))
+#df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope=coef(tmp)$PatID[,1])
+df.tmp <- data.diacore %>%
+  group_by(PatID) %>%
+  summarise(eGFRslope=summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2]) %>%
+  data.frame() %>%
+  `colnames<-`(c("PatID", "true.slope"))
 data.diacore <- left_join(data.diacore, df.tmp, by="PatID")
 data.diacore$true.prob <- (data.diacore$true.slope <= slope_cutpoint)*1
