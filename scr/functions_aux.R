@@ -17,8 +17,7 @@ recodeDates <- function(x){
 
 right_rows <- function (data, times, ids, Q_points) {
   fids <- factor(ids, levels = unique(ids))
-  if (!is.list(Q_points))
-    Q_points <- split(Q_points, row(Q_points))
+  if (!is.list(Q_points)){Q_points <- split(Q_points, row(Q_points))}
   ind <- mapply(findInterval, Q_points, split(times, fids))
   ind[ind < 1] <- 1
   rownams_id <- split(row.names(data), fids)
@@ -199,33 +198,18 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
                                  level = 0.95, cutpoint=-3, all_times, interval="prediction", M=500, seed=123) 
 {
   # Specify to try the function
-  # lmerObject = fit.final
-  # newdata = data.full.t0
-  # timeVar = "Time"
-  # idVar <- "PatID"
-  # idVar2="Country"
-  # times = seq(1,8,1)
-  # all_times = F
-  # level = 0.95
-  # cutpoint=-3
-  # interval="prediction"
-  # M=100
-  # seed=123
-  # 
-  # lmeObject=risk_model; 
-  # newdata = data.diacore.t0; 
-  # cutpoint = slope_cutpoint;
-  # timeVar = "Time"; idVar="PatID"; idVar2="Country";
-  # times =sort(unique(data.diacore$Time_cat)); 
-  # all_times=F
-  
-  # lmerObject=fit.lmer; 
-  # newdata = data.test.t0; 
-  # cutpoint = slope_cutpoint;
-  # timeVar = "Time"; idVar="PatID"; idVar2="Country";
-  # times =unique(data.full$Time_cat)[-1]; 
-  # all_times=F
-  
+  lmerObject = fit.final
+  newdata = data.full.t0
+  timeVar = "Time"
+  idVar <- "PatID"
+  idVar2="Country"
+  times = seq(1,8,1)
+  all_times = F
+  level = 0.95
+  cutpoint=-3
+  interval="prediction"
+  M=100
+  seed=123
   
   # ---- Assign elements of lmer to objects
   data <- lmerObject@frame
@@ -258,7 +242,9 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   # estimated standard deviation of the errors
   sigma <- lmerObject@sigma   
   # random effects covariance matrixfor idVar
-  D <- VarCorr(lmerObject)[[idVar]]
+  G <- VarCorr(lmerObject)[[idVar]]
+  # random effect correlation matrix
+  C <- attr(VarCorr(lmerObject)[[1]],"correlation")
   # fixed effects covariance matrix
   V.fe <- as.matrix(vcov(lmerObject))
   
@@ -304,26 +290,6 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   mfZ_2_new_pred <- model.frame(TermsZ_2, data = newdata_pred, na.action = NULL)
   Z_2_new_pred <- sapply(model.frame(formula("~ Country"), data=newdata_pred)[,1], function(x) Z2.icpt[Z2.icpt$country %in% x,2])
   
-  # ------ Compute random coeffs with baseline value; assumes country is unknown
-  b <- matrix(0.0, n, ncol(Z_new))
-  post_vars <- DZtVinv <- vector("list", n)
-  for (i in seq_len(n)) {
-    id_i <- id_nomiss == i
-    X_new_id <- X_new[id_i, , drop = FALSE]
-    Z_new_id <- Z_new[id_i, , drop = FALSE]
-    Z_2_new_id <- Z_2_new[id_i, drop = FALSE]
-    
-    Vi_inv <- solve(Z_new_id %*% tcrossprod(D, Z_new_id) + sigma^2 * diag(sum(id_i)))
-    DZtVinv[[i]] <- tcrossprod(D, Z_new_id) %*% Vi_inv
-    b[i, ] <- c(DZtVinv[[i]] %*% (y_new[id_i] - (X_new_id %*% betas + Z_2_new_id)))
-    t1 <- DZtVinv[[i]] %*% Z_new_id %*% D
-    t2 <- DZtVinv[[i]] %*% X_new_id %*% V.fe %*% 
-      crossprod(X_new_id, Vi_inv) %*% Z_new_id %*% D
-    post_vars[[i]] <- D - t1 + t2
-  }
-  fitted_y <- c(X_new %*% betas) + rowSums(Z_new * b[id_nomiss, , drop = FALSE] + Z_2_new)
-  
-  
   # ---- Initial predictions
   pred_y_i0 <- c(X_new %*% betas) + Z_2_new
   pred_y_it <- c(X_new_pred %*% betas) + Z_2_new_pred
@@ -331,24 +297,12 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   # --------  Update predictions
   outcomeVar <- formula(lmerObject)[[2]]
   obs_y <- newdata[[outcomeVar]]
-  b0.post <- (D[1,1]/(D[1,1] + sigma^2))*(obs_y-pred_y_i0)
-  b1.post <- (b0.post* D[1,2])/(D[1,1])
+  b0.post <- (G[1,1]/(G[1,1] + sigma^2))*(obs_y-pred_y_i0)
+  b1.post <- (b0.post* G[1,2])/(G[1,1])
   b.new <- data.frame("Intercept"=b0.post, "Time"=b1.post)
   
   # -------- Compute E(Y(t=time)|y_i0) + 95% - CI
   y_hat_time <- c(X_new_pred %*% betas) + rowSums(Z_new_pred * b.new[id_pred, , drop = FALSE]) + Z_2_new_pred
-  
-  std.error <- function(x) sd(x)/sqrt(length(x))
-  se.b0 <- std.error(b0.post)
-  se.b1 <- std.error(b1.post)
-  
-  RE_estimates <- data.frame("b0.est"=b0.post, "b0.se"=se.b0, 
-                             "b0.lo"=b0.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
-                             "b0.up"=b0.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
-                             "b1.est"=b1.post, "b1.se"=se.b1, 
-                             "b1.lo"=b1.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b1, 
-                             "b0.up"=b1.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b1)
-  
   
   # ------ eGFR slope per individual
   dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
@@ -356,99 +310,50 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
         betas[str_detect(names(betas), paste0(timeVar,":"))]) +
     c(b.new[,str_detect(colnames(b.new), "Time")])
   
-  # ------- Confidence/Prediction interval for Y 
-  if(interval=="confidence"){
-    SE.yit <- list()
-    for (i in seq_len(n)) {
-      se <- list()
-      id_i <- id_nomiss == i
-      X_new_id <- X_new[id_i, , drop = FALSE]
-      
-      Vy_0i_hat = X_new_id %*% tcrossprod(V.fe, X_new_id)
-      diag0 <- (D[1,1]/(D[1,1] + sigma^2)) * Vy_0i_hat
-      diag1 <- (1-(D[1,2]/(D[1,1]*D[2,2]))) * D[2,2]
-      off01 <- off10 <- (D[1,2]^2)/D[2,2]
-      D_star <- matrix(c(diag0, off01, off10, diag1), ncol=2, byrow=T) # adjusted covariance matrix of random effects given known baseline value
-      
-      ### compute Var(Y(t=time))
-      for (time in times_to_pred[[i]]) {
-        z <- c(1, time)
-        Vit_star <- ((X_new_id) %*% tcrossprod(V.fe, X_new_id)) + (z %*% (D_star %*% z)) + sigma^2
-        se[[time]] <- sqrt(Vit_star)
-      }
-      SE.yit[[i]] <- unlist(se)
-    }
+  # ------ Prediction interval
+  V.fe.dev <- V.fe[str_detect(rownames(V.fe), "Time"), str_detect(colnames(V.fe), "Time")]
+  SE.yit <- SE.dyit <- checkV0i <- checkGstar <- list()
+  for (i in seq_len(n)) {
+    # Variance of yit
+    se <- list()
+    id_i <- id_nomiss == i
+    X_new_id <- X_new[id_i, , drop = FALSE]
     
-    se.pred <- unlist(SE.yit)
-    low <-  y_hat_time - qnorm((1-level)/2,lower.tail=FALSE) * se.pred
-    upp <- y_hat_time + qnorm((1-level)/2,lower.tail=FALSE) * se.pred
-  }else if(interval=="prediction"){
-    set.seed(seed)
-    betas_M <- MASS::mvrnorm(M, betas, V.fe)
-    modes_fun <- function (betas) {
-      t(mapply("%*%", DZtVinv, split(y_new - ((X_new %*% betas) + Z_2_new), id_nomiss)))
-    }
-    modes_M <- lapply(split(betas_M, row(betas_M)), modes_fun) # MxN
-    matrix_row <- function (m, i) m[i, , drop = FALSE]
-    modes_M <- lapply(seq_len(n), function (i) t(sapply(modes_M, matrix_row, i = i))) # NxM
-    b_M <- modes_M
-    for (i in seq_len(n)) {
-      b_M[[i]] <- t(apply(modes_M[[i]], 1, MASS::mvrnorm, n = 1, Sigma = post_vars[[i]]))
-    }
-    n_pred <- length(y_hat_time)
-    sampled_y <- sampled_dy <-matrix(0.0, n_pred, M)
+    V0i= X_new_id %*% tcrossprod(V.fe,X_new_id)
+    diag1<-(G[1,1]/(G[1,1] + sigma^2))^2*V0i
+    diag2<-(1-(C[1,2])^2)*G[2,2]
+    off12<-(G[1,2]^2/(G[1,1]))^2*G11
+    G_star<-cbind(c(diag1,off12),c(off12,diag2))
     
-    for (m in seq_len(M)) {
-      betas_m <- betas_M[m, ]
-      b_m <- t(sapply(b_M, function (x) x[m, ]))
-      mean_m <- c(X_new_pred %*% betas_m) + 
-        rowSums(Z_new_pred * b_m[id_pred, , drop = FALSE]) + Z_2_new_pred
-      dmean_m <- betas_m[str_detect(names(betas_m), paste0(timeVar,"$"))] + 
-        c(X_new_pred[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% betas_m[str_detect(names(betas_m), paste0(timeVar,":"))]) + 
-        c(b_m[id_pred,str_detect(colnames(b_m), timeVar)])
-      
-      sampled_y[, m] <- rnorm(n_pred, mean_m, sigma)
-      sampled_dy[,m] <- dmean_m
+    ### compute Var(Y(t=time))
+    for (time in times_to_pred[[i]]) {
+      z <- c(1, time)
+      Vit_star <- V0i + (z %*% G_star%*% z) + sigma^2
+      se[[time]] <- sqrt(Vit_star)
     }
-    low <- apply(sampled_y, 1, quantile, probs = (1 - level) / 2)
-    upp <- apply(sampled_y, 1, quantile, probs = 1 - (1 - level) / 2)
+    SE.yit[[i]] <- unlist(se)
     
-    if(nrow(newdata)>1){
-      low.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = (1 - level) / 2)
-      upp.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = 1 - (1 - level) / 2)
-      sd.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, sd)
-    }else{
-      low.dyi <- apply(sampled_dy,1, quantile, probs = (1 - level) / 2)[1]
-      upp.dyi <- apply(sampled_dy,1, quantile, probs = 1 - (1 - level) / 2)[1]
-      sd.dyi <- apply(sampled_dy,1, sd)[1]
-    }
+    # Variance of dyit
+    X_new_id_dev <- X_new_id[,!str_detect(colnames(X_new_pred), paste0(timeVar))] 
+    V0i= X_new_id_dev %*% V.fe.dev %*% X_new_id_dev
+    diag2<-(1-(C[1,2])^2)*G[2,2]
+
+    se <- sqrt(V0i + diag2)
+    checkV0i[[i]] <- V0i
+    checkGstar[[i]] <- diag2
+    SE.dyit[[i]] <- rep(se, length(times_to_pred[[i]]))
   }
   
+  se.pred <- unlist(SE.yit)
+  low <-  y_hat_time - qnorm((1-level)/2,lower.tail=FALSE) * se.pred
+  upp <- y_hat_time + qnorm((1-level)/2,lower.tail=FALSE) * se.pred
+  
+  se.pred.dev <- unlist(SE.dyit)
+  low.dev <-   dyit_hat - qnorm((1-level)/2,lower.tail=FALSE) * se.pred.dev
+  upp.dev <-  dyit_hat + qnorm((1-level)/2,lower.tail=FALSE) * se.pred.dev
+  
   # ------ Probability of Progression:
-  
-  prob.prog <- round(pnorm((cutpoint-dyit_hat)/sd.dyi, lower.tail=T),4)
-  
-  # prob.prog <- data.frame(PatID=data.full.t0$PatID, "pred.prob"=prob.prog)
-  # true.prog <- data.full %>%
-  #   mutate(Time_cont=as.numeric(Time_cont)) %>%
-  #   group_by(PatID) %>%
-  #   do(broom::tidy(lm(FU_eGFR_epi ~ Time_cont,  data = .))) %>%
-  #   filter(term %in% "Time_cont") %>%
-  #   dplyr::select(PatID, estimate) %>%
-  #   `colnames<-`(c("PatID", "true.slope")) %>%
-  #   mutate(true.prob = (true.slope <= slope_cutpoint)*1) %>%
-  #   data.frame()
-  # df <- full_join(prob.prog, true.prog, by="PatID")
-  # 
-  # pred_prob = df$pred.prob
-  # true_prob = df$true.prob
-  # plot_calibration_bin(pred=pred_prob, true=as.factor(true_prob), out.path = out.path, save=T)
-  # Brier <- mean((pred_prob-true_prob)^2)
-  # C.index <- somers2(pred_prob, true_prob)["C"]
-  # Deviance<- -2*sum(true_prob*log(pred_prob) + (1-true_prob)*log(1-pred_prob) )
-  # print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), " and deviance = ", round(Deviance,2)))
-  # 
-  # 
+  prob.prog <- round(pnorm((cutpoint-dyit_hat)/se.pred.dev, lower.tail=T),4)
   
   # ------Output
   # Predictions + CI
@@ -467,7 +372,7 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   
   out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
   
-  res <- list("Pred" = out_data, "RE.est" = RE_estimates)
+  res <- list("Pred" = out_data)
   return(res)
 }
 
@@ -708,6 +613,283 @@ LongPred_ByBase_lme <- function (lmeObject, newdata, timeVar, idVar, idVar2=NULL
   # 
   # 
 
+  # ------Output
+  # Predictions + CI
+  out_data <- rbind(newdata, newdata_pred)
+  out_data$pred <- c(fitted_y, y_hat_time)
+  out_data$Time_cat <- out_data$Time
+  out_data$prior.pred <- c(pred_y_i0, pred_y_it)
+  out_data$pred.lo <- c(rep(NA, length(pred_y_i0)), low)
+  out_data$pred.up <- c(rep(NA, length(pred_y_i0)), upp)
+  
+  times_rep <- c(sapply(times_to_pred, length))
+  out_data$pred.slope <- c(dyit_hat, rep(dyit_hat, times_rep))
+  out_data$pred.slope.lo <- c(low.dyi, rep(low.dyi, times_rep))
+  out_data$pred.slope.up <- c(upp.dyi, rep(upp.dyi, times_rep))
+  out_data$pred.prob <- c(prob.prog, rep(prob.prog, times_rep))
+  
+  out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
+  
+  res <- list("Pred" = out_data, "RE.est" = RE_estimates)
+  return(res)
+}
+
+LongPred_shiny <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,  times,
+                                  level = 0.95, cutpoint=-3, all_times, interval="prediction", M=500, seed=123) 
+{
+  # Specify to try the function
+  lmerObject = fit.final
+  newdata = data.full.t0
+  timeVar = "Time"
+  idVar <- "PatID"
+  idVar2="Country"
+  times = seq(1,8,1)
+  all_times = F
+  level = 0.95
+  cutpoint=-3
+  interval="prediction"
+  M=100
+  seed=123
+
+  
+  # ---- Assign elements of lmer to objects
+  data <- lmerObject@frame
+  # get fixed effects part of formula
+  formYx <- nobars(formula(lmerObject))
+  mfX <- model.frame(terms(formYx), data = data)
+  TermsX <- attr(mfX, "terms")
+  
+  # get ids for random effects
+  rf_spec = findbars(formula(lmerObject)) %>%
+    sapply(deparse1) %>% 
+    sapply(str_split, pattern = "\\|")
+  rf = map_chr(rf_spec, ~ str_trim(.x[1])) %>% 
+    set_names(map_chr(rf_spec, ~ str_trim(.x[2])))
+  
+  # get random effects part of formula for idVar
+  formYz <- as.formula(sprintf("~ %s", rf[[idVar]]))
+  mfZ <- model.frame(terms(formYz), data = data)
+  TermsZ <- attr(mfZ, "terms")
+  
+  # random intercepts per idVar2
+  formYz_2 <- as.formula(sprintf("~ %s", rf[[idVar2]]))
+  mfZ_2 <- model.frame(terms(formYz_2), data = data)
+  TermsZ_2 <- attr(mfZ_2, "terms")
+  Z2.icpt <- ranef(lmerObject)[[idVar2]] %>% 
+    tibble::rownames_to_column("country") %>% 
+    add_row(country="Unknown", "(Intercept)" = 0)
+  
+  betas <- fixef(lmerObject)
+  # estimated standard deviation of the errors
+  sigma <- lmerObject@sigma   
+  # random effects covariance matrixfor idVar
+  D <- VarCorr(lmerObject)[[idVar]]
+  # fixed effects covariance matrix
+  V.fe <- as.matrix(vcov(lmerObject))
+  
+  all_vars <- unique(c(all.vars(TermsX), all.vars(TermsZ)))
+  newdata_nomiss <- newdata[complete.cases(newdata[all_vars]), ]
+  mfX_new <- model.frame(TermsX, data = newdata_nomiss)
+  X_new <- model.matrix(formYx, mfX_new)
+  mfZ_new <- model.frame(TermsZ, data = newdata_nomiss)
+  Z_new <- model.matrix(formYz, mfZ_new)
+  
+  mfZ_2_new <- model.frame(TermsZ_2, data = newdata_nomiss)
+  Z_2_new <- sapply(model.frame(formula("~ Country"), data=newdata_nomiss)[,1], function(x) Z2.icpt[Z2.icpt$country %in% x,2])
+  
+  na_ind <- attr(mfX_new, "na.action")
+  y_new <- model.response(mfX_new, "numeric")
+  
+  id_nomiss <- match(newdata_nomiss[[idVar]], unique(newdata_nomiss[[idVar]]))
+  n <- length(unique(id_nomiss))
+  
+  # --- Determine times for which to predict for
+  times_orig <- data[[timeVar]]
+  times_orig <- times_orig[!is.na(times_orig)]
+  if (is.null(times) || !is.numeric(times)) {
+    times <- seq(min(times_orig), max(times_orig), length.out = 100)
+  }
+  id <- match(newdata[[idVar]], unique(newdata[[idVar]]))
+  last_time <- tapply(newdata[[timeVar]], id, max)
+  times_to_pred <- lapply(last_time, function(t) if (all_times) 
+    times
+    else times[times > t])
+  id_pred <- rep(seq_len(n), sapply(times_to_pred, length))
+  
+  # ------ Create set with new rows for preds
+  newdata_pred <- right_rows(newdata, newdata[[timeVar]], id, 
+                             times_to_pred)
+  newdata_pred[[timeVar]] <- unlist(times_to_pred)
+  mfX_new_pred <- model.frame(TermsX, data = newdata_pred, 
+                              na.action = NULL)
+  X_new_pred <- model.matrix(formYx, mfX_new_pred)
+  mfZ_new_pred <- model.frame(TermsZ, data = newdata_pred, na.action = NULL)
+  Z_new_pred <- model.matrix(formYz, mfZ_new_pred)
+  
+  mfZ_2_new_pred <- model.frame(TermsZ_2, data = newdata_pred, na.action = NULL)
+  Z_2_new_pred <- sapply(model.frame(formula("~ Country"), data=newdata_pred)[,1], function(x) Z2.icpt[Z2.icpt$country %in% x,2])
+  
+  # ------ Compute random coeffs with baseline value; assumes country is unknown
+  b <- matrix(0.0, n, ncol(Z_new))
+  post_vars <- DZtVinv <- vector("list", n)
+  
+#####################
+  data_new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=45,
+                         BL_age=65, 
+                         BL_sex=1, 
+                         BL_bmi=22, 
+                         BL_smoking=1,
+                         BL_hemo=14.6, BL_hba1c=43, BL_serumchol=177, BL_map=96.7,
+                         BL_uacr_log2=3,
+                         BL_med_dm=1, BL_med_bp=1, BL_med_lipid=1)
+  
+    betas = lmerObject@beta
+    sigma <- lmerObject@sigma   
+    D <- as.matrix(VarCorr(lmerObject)[["PatID"]])
+    
+    X_new = cbind(1,data_new[,!colnames(data_new) %in% c("PatID", "Country", "FU_eGFR_epi")], t(data.frame(c(rep(0,12)))))
+    colnames(X_new)[c(1,15:26)] <- c("Intercept",paste0("Time:", colnames(X_new)[3:14]))
+    rownames(X_new)<-NULL
+    
+    times_to_pred=list("1"=1:5)
+    X_new_pred <- right_rows(X_new, X_new[["Time"]], 1, times_to_pred)
+    X_new_pred[["Time"]] <- unlist(times_to_pred)
+    
+    Z_new <- data.frame(t(as.matrix(c(1,0))))
+    colnames(Z_new) <- c("Intercept", "Time")
+    
+    Z_new_pred <- right_rows(Z_new, Z_new[["Time"]], 1, times_to_pred)
+    Z_new_pred[["Time"]] <- unlist(times_to_pred)
+    
+    Z_2_new = 0
+    Z_2_new_pred = rep(0, length(times_to_pred))
+    
+  
+  # ---- Initial predictions
+  pred_y_i0 <- sum(X_new * betas) 
+  pred_y_it <- sum(X_new_pred * betas)
+  
+  # --------  Update predictions
+  obs_y <- data_new[["FU_eGFR_epi"]]
+  b0.post <- (D[1,1]/(D[1,1] + sigma^2))*(obs_y-pred_y_i0)
+  b1.post <- (b0.post* D[1,2])/(D[1,1])
+  b.new <- c("Intercept"=b0.post, "Time"=b1.post)
+  
+  # -------- Compute E(Y(t=time)|y_i0) + 95% - CI
+  y_hat_time <- sum(X_new * betas) + rowSums(t(t(Z_new_pred) * b.new)) + Z_2_new_pred
+  
+  std.error <- function(x) sd(x)/sqrt(length(x))
+  se.b0 <- std.error(b0.post)
+  se.b1 <- std.error(b1.post)
+  
+  RE_estimates <- data.frame("b0.est"=b0.post, "b0.se"=se.b0, 
+                             "b0.lo"=b0.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
+                             "b0.up"=b0.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
+                             "b1.est"=b1.post, "b1.se"=se.b1, 
+                             "b1.lo"=b1.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b1, 
+                             "b0.up"=b1.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b1)
+  
+  
+  # ------ eGFR slope per individual
+  dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
+    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
+        betas[str_detect(names(betas), paste0(timeVar,":"))]) +
+    c(b.new[,str_detect(colnames(b.new), "Time")])
+  
+  # ------- Confidence/Prediction interval for Y 
+  if(interval=="confidence"){
+    SE.yit <- list()
+    for (i in seq_len(n)) {
+      se <- list()
+      id_i <- id_nomiss == i
+      X_new_id <- X_new[id_i, , drop = FALSE]
+      
+      Vy_0i_hat = X_new_id %*% tcrossprod(V.fe, X_new_id)
+      diag0 <- (D[1,1]/(D[1,1] + sigma^2)) * Vy_0i_hat
+      diag1 <- (1-(D[1,2]/(D[1,1]*D[2,2]))) * D[2,2]
+      off01 <- off10 <- (D[1,2]^2)/D[2,2]
+      D_star <- matrix(c(diag0, off01, off10, diag1), ncol=2, byrow=T) # adjusted covariance matrix of random effects given known baseline value
+      
+      ### compute Var(Y(t=time))
+      for (time in times_to_pred[[i]]) {
+        z <- c(1, time)
+        Vit_star <- ((X_new_id) %*% tcrossprod(V.fe, X_new_id)) + (z %*% (D_star %*% z)) + sigma^2
+        se[[time]] <- sqrt(Vit_star)
+      }
+      SE.yit[[i]] <- unlist(se)
+    }
+    
+    se.pred <- unlist(SE.yit)
+    low <-  y_hat_time - qnorm((1-level)/2,lower.tail=FALSE) * se.pred
+    upp <- y_hat_time + qnorm((1-level)/2,lower.tail=FALSE) * se.pred
+  }else if(interval=="prediction"){
+    set.seed(seed)
+    betas_M <- MASS::mvrnorm(M, betas, V.fe)
+    modes_fun <- function (betas) {
+      t(mapply("%*%", DZtVinv, split(y_new - ((X_new %*% betas) + Z_2_new), id_nomiss)))
+    }
+    modes_M <- lapply(split(betas_M, row(betas_M)), modes_fun) # MxN
+    matrix_row <- function (m, i) m[i, , drop = FALSE]
+    modes_M <- lapply(seq_len(n), function (i) t(sapply(modes_M, matrix_row, i = i))) # NxM
+    b_M <- modes_M
+    for (i in seq_len(n)) {
+      b_M[[i]] <- t(apply(modes_M[[i]], 1, MASS::mvrnorm, n = 1, Sigma = post_vars[[i]]))
+    }
+    n_pred <- length(y_hat_time)
+    sampled_y <- sampled_dy <-matrix(0.0, n_pred, M)
+    
+    for (m in seq_len(M)) {
+      betas_m <- betas_M[m, ]
+      b_m <- t(sapply(b_M, function (x) x[m, ]))
+      mean_m <- c(X_new_pred %*% betas_m) + 
+        rowSums(Z_new_pred * b_m[id_pred, , drop = FALSE]) + Z_2_new_pred
+      dmean_m <- betas_m[str_detect(names(betas_m), paste0(timeVar,"$"))] + 
+        c(X_new_pred[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% betas_m[str_detect(names(betas_m), paste0(timeVar,":"))]) + 
+        c(b_m[id_pred,str_detect(colnames(b_m), timeVar)])
+      
+      sampled_y[, m] <- rnorm(n_pred, mean_m, sigma)
+      sampled_dy[,m] <- dmean_m
+    }
+    low <- apply(sampled_y, 1, quantile, probs = (1 - level) / 2)
+    upp <- apply(sampled_y, 1, quantile, probs = 1 - (1 - level) / 2)
+    
+    if(nrow(newdata)>1){
+      low.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = (1 - level) / 2)
+      upp.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, quantile, probs = 1 - (1 - level) / 2)
+      sd.dyi <- apply(sampled_dy[!duplicated(sampled_dy),],1, sd)
+    }else{
+      low.dyi <- apply(sampled_dy,1, quantile, probs = (1 - level) / 2)[1]
+      upp.dyi <- apply(sampled_dy,1, quantile, probs = 1 - (1 - level) / 2)[1]
+      sd.dyi <- apply(sampled_dy,1, sd)[1]
+    }
+  }
+  
+  # ------ Probability of Progression:
+  
+  prob.prog <- round(pnorm((cutpoint-dyit_hat)/sd.dyi, lower.tail=T),4)
+  
+  # prob.prog <- data.frame(PatID=data.full.t0$PatID, "pred.prob"=prob.prog)
+  # true.prog <- data.full %>%
+  #   mutate(Time_cont=as.numeric(Time_cont)) %>%
+  #   group_by(PatID) %>%
+  #   do(broom::tidy(lm(FU_eGFR_epi ~ Time_cont,  data = .))) %>%
+  #   filter(term %in% "Time_cont") %>%
+  #   dplyr::select(PatID, estimate) %>%
+  #   `colnames<-`(c("PatID", "true.slope")) %>%
+  #   mutate(true.prob = (true.slope <= slope_cutpoint)*1) %>%
+  #   data.frame()
+  # df <- full_join(prob.prog, true.prog, by="PatID")
+  # 
+  # pred_prob = df$pred.prob
+  # true_prob = df$true.prob
+  # plot_calibration_bin(pred=pred_prob, true=as.factor(true_prob), out.path = out.path, save=T)
+  # Brier <- mean((pred_prob-true_prob)^2)
+  # C.index <- somers2(pred_prob, true_prob)["C"]
+  # Deviance<- -2*sum(true_prob*log(pred_prob) + (1-true_prob)*log(1-pred_prob) )
+  # print(paste0("Brier = ", round(Brier,2), ", C statistic = ", round(C.index,2), " and deviance = ", round(Deviance,2)))
+  # 
+  # 
+  
   # ------Output
   # Predictions + CI
   out_data <- rbind(newdata, newdata_pred)

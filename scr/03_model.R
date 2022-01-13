@@ -111,13 +111,12 @@ ggplot(data.frame(x1=as.factor(data.full$Time),residual=resid(fit.final, scaled=
   theme_bw() 
 
 
-
 ################################################################################
 # -------------------- Internal-external validation ----------------------------
 ################################################################################
 
 set.seed(123)
-j=1; b=3
+j=1; b=nboot
 
 # Crossvalidated predictions
 data.full$fold <- as.numeric(data.full$Country)

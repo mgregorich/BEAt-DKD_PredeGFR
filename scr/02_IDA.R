@@ -148,24 +148,44 @@ tmp <- data.diacore %>%
 mean(tmp$max_time)
 hist(tmp$max_time)
 
+
+# --- CKD stage at baseline
+data.tmp <- data.full %>%
+  filter(Time_cat==0) %>%
+  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi >=90, 1, ifelse(FU_eGFR_epi >=60, 2, 3))))
+
+ggplot(data.tmp, aes(x=CKDstage, fill=Cohort)) +
+  geom_bar(stat="count") +
+  theme_bw() +
+  facet_wrap(~Cohort)
+
+Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
+     "CKD2"=(sum(data.tmp$CKDstage==2)/nrow(data.tmp))*100,
+     "CKD3"=(sum(data.tmp$CKDstage==3)/nrow(data.tmp))*100)
+
+data.tmp <- data.diacore %>%
+  filter(Time_cat==0) %>%
+  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi >=90, 1, ifelse(FU_eGFR_epi >=60, 2, 3))))
+Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
+                       "CKD2"=(sum(data.tmp$CKDstage==2)/nrow(data.tmp))*100,
+                       "CKD3"=(sum(data.tmp$CKDstage==3)/nrow(data.tmp))*100)
+
 #####################################################################################################
 # ------------------------------ TABLE 1 -----------------------------------
 ####################################################################################################
 data.tmp <- data.full[data.full$Time_cat==0,]
-table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
-                                          "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), strata="Cohort", test=F)
+pred.
+table1 <- CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), strata="Cohort", test=F)
 write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_dev.xlsx"),  overwrite = TRUE)
 CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
                                       "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid"),  test=F)
 
 data.tmp <- data.diacore[data.diacore$Time_cat == 0,]
-table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
-                                                "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), test=F)
+table1 <- CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), test=F)
 write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_val.xlsx"), overwrite=T)
 
 data.tmp <- data.full[data.full$Time_cat==0,]
-table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
-                                                "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), test=F)
+table1 <- CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), test=F)
 write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
 
 # ------------- Table: longitudinal eGFR measurements stratified by cohort
