@@ -86,6 +86,8 @@ draw_bootstrap_sample <- function(data.tmp){
 
 
 intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
+  # data.boot=data.full; b.nr=NA; return_preds=T
+  
   df.pred <- df.res <- df.re <- list()
   c = length(unique(data.full$Country))
   i=1
@@ -198,18 +200,19 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
                                  level = 0.95, cutpoint=-3, all_times, interval="prediction", M=500, seed=123) 
 {
   # Specify to try the function
-  lmerObject = fit.final
-  newdata = data.full.t0
-  timeVar = "Time"
-  idVar <- "PatID"
-  idVar2="Country"
-  times = seq(1,8,1)
-  all_times = F
-  level = 0.95
-  cutpoint=-3
-  interval="prediction"
-  M=100
-  seed=123
+  # lmerObject = fit.final
+  # newdata = data.full.t0
+  # timeVar = "Time"
+  # idVar <- "PatID"
+  # idVar2="Country"
+  # times = seq(1,8,1)
+  # all_times = F
+  # level = 0.95
+  # cutpoint=-3
+  # interval="prediction"
+  # M=100
+  # seed=123
+
   
   # ---- Assign elements of lmer to objects
   data <- lmerObject@frame
@@ -293,7 +296,7 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   # ---- Initial predictions
   pred_y_i0 <- c(X_new %*% betas) + Z_2_new
   pred_y_it <- c(X_new_pred %*% betas) + Z_2_new_pred
-  
+
   # --------  Update predictions
   outcomeVar <- formula(lmerObject)[[2]]
   obs_y <- newdata[[outcomeVar]]
@@ -301,7 +304,19 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   b1.post <- (b0.post* G[1,2])/(G[1,1])
   b.new <- data.frame("Intercept"=b0.post, "Time"=b1.post)
   
+  std.error <- function(x) sd(x)/sqrt(length(x))
+  se.b0 <- std.error(b0.post)
+  se.b1 <- std.error(b1.post)
+  
+  RE_estimates <- data.frame("b0.est"=b0.post, "b0.se"=se.b0, 
+                             "b0.lo"=b0.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
+                             "b0.up"=b0.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
+                             "b1.est"=b1.post, "b1.se"=se.b1, 
+                             "b1.lo"=b1.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b1, 
+                             "b0.up"=b1.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b1)
+  
   # -------- Compute E(Y(t=time)|y_i0) + 95% - CI
+  y_hat_0 <- c(X_new %*% betas) + rowSums(Z_new * b.new) + Z_2_new
   y_hat_time <- c(X_new_pred %*% betas) + rowSums(Z_new_pred * b.new[id_pred, , drop = FALSE]) + Z_2_new_pred
   
   # ------ eGFR slope per individual
@@ -309,6 +324,8 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
     c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
         betas[str_detect(names(betas), paste0(timeVar,":"))]) +
     c(b.new[,str_detect(colnames(b.new), "Time")])
+  
+
   
   # ------ Prediction interval
   V.fe.dev <- V.fe[str_detect(rownames(V.fe), "Time"), str_detect(colnames(V.fe), "Time")]
@@ -322,7 +339,7 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
     V0i= X_new_id %*% tcrossprod(V.fe,X_new_id)
     diag1<-(G[1,1]/(G[1,1] + sigma^2))^2*V0i
     diag2<-(1-(C[1,2])^2)*G[2,2]
-    off12<-(G[1,2]^2/(G[1,1]))^2*G11
+    off12<-(G[1,2]^2/(G[1,1]))^2*diag1
     G_star<-cbind(c(diag1,off12),c(off12,diag2))
     
     ### compute Var(Y(t=time))
@@ -339,9 +356,7 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
     diag2<-(1-(C[1,2])^2)*G[2,2]
 
     se <- sqrt(V0i + diag2)
-    checkV0i[[i]] <- V0i
-    checkGstar[[i]] <- diag2
-    SE.dyit[[i]] <- rep(se, length(times_to_pred[[i]]))
+    SE.dyit[[i]] <- se
   }
   
   se.pred <- unlist(SE.yit)
@@ -358,7 +373,7 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   # ------Output
   # Predictions + CI
   out_data <- rbind(newdata, newdata_pred)
-  out_data$pred <- c(fitted_y, y_hat_time)
+  out_data$pred <- c(y_hat_0, y_hat_time)
   out_data$Time_cat <- out_data$Time
   out_data$prior.pred <- c(pred_y_i0, pred_y_it)
   out_data$pred.lo <- c(rep(NA, length(pred_y_i0)), low)
@@ -366,13 +381,13 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   
   times_rep <- c(sapply(times_to_pred, length))
   out_data$pred.slope <- c(dyit_hat, rep(dyit_hat, times_rep))
-  out_data$pred.slope.lo <- c(low.dyi, rep(low.dyi, times_rep))
-  out_data$pred.slope.up <- c(upp.dyi, rep(upp.dyi, times_rep))
+  out_data$pred.slope.lo <- c(low.dev, rep(low.dev, times_rep))
+  out_data$pred.slope.up <- c(upp.dev, rep(upp.dev, times_rep))
   out_data$pred.prob <- c(prob.prog, rep(prob.prog, times_rep))
   
-  out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
+  out_data <- out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
   
-  res <- list("Pred" = out_data)
+  res <- list("Pred" = out_data, "RE.est" = RE_estimates)
   return(res)
 }
 
