@@ -339,18 +339,11 @@ tripod_flowchart
 
 # --- True progression estimation ----
 
-
-
-
 df.tmp <- data.full %>%
   group_by(PatID) %>%
   summarise(eGFRslope=summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2]) %>%
   data.frame() %>%
   `colnames<-`(c("PatID", "true.slope"))
-
-data.full <- left_join(data.full, df.tmp, by="PatID")
-tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
-df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope.mm=coef(tmp)$PatID[,1])
 data.full <- left_join(data.full, df.tmp, by="PatID")
 data.full$true.prob <- (data.full$true.slope <= slope_cutpoint)*1
 

@@ -251,9 +251,10 @@ fit.scaled <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_s
 df <- data.frame(variable=rownames(summary(fit.scaled)$coefficients),
                  effect=summary(fit.scaled)$coefficients[,1],
                  lower=summary(fit.scaled)$coefficients[,1] - 1.96*summary(fit.scaled)$coefficients[,2],
-                 upper=summary(fit.scaled)$coefficients[,1] + 1.96* summary(fit.scaled)$coefficients[,2])
+                 upper=summary(fit.scaled)$coefficients[,1] + 1.96* summary(fit.scaled)$coefficients[,2]) 
 df$variable <- factor(df$variable, levels = df$variable[length(df$variable):1])
-df$Group <- ifelse(str_detect(df$variable, "Time:"), "Interaction (Time)", "Individual")
+df$Group <- ifelse(str_detect(df$variable, "Time:"), "Effect on eGFR slope", "Effect on eGFR value")
+df <- mutate(df, Group = fct_rev(Group)) 
 df$variable <- as.factor(str_replace(df$variable, "Time:", ""))
 df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_sex1","BL_bmi","BL_smoking1","BL_map","BL_hba1c","BL_serumchol", "BL_hemo",
                                             "BL_uacr_log2", "BL_med_dm1","BL_med_bp1","BL_med_lipid1"))
@@ -266,7 +267,7 @@ ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lowe
   geom_point(size=2, shape=1) + 
   geom_errorbarh(height=.25) +
   scale_y_discrete("") +
-  scale_x_continuous("Standardized Effect", limits=c(-0.5, 0.5)) +
+  scale_x_continuous("Standardized Effect", limits=c(-0.4, 0.4)) +
   geom_vline(xintercept=0, linetype="dashed", color = "red") +
   facet_wrap(~Group) +
   theme_bw() +
