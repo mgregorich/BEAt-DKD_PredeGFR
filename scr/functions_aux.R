@@ -245,21 +245,27 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   # estimated standard deviation of the errors
   sigma <- lmerObject@sigma   
   # random effects covariance matrixfor idVar
-  G <- VarCorr(lmerObject)[[idVar]]
+  G <- VarCorr(lmerObject, )[[idVar]]
   # random effect correlation matrix
-  C <- attr(VarCorr(lmerObject)[[1]],"correlation")
+  C <- attr(G, "correlation")
   # fixed effects covariance matrix
   V.fe <- as.matrix(vcov(lmerObject))
   
   all_vars <- unique(c(all.vars(TermsX), all.vars(TermsZ)))
-  newdata_nomiss <- newdata[complete.cases(newdata[all_vars]), ]
+  ind_cc = complete.cases(newdata[all_vars])
+  if (sum(ind_cc) < nrow(newdata)) {
+    print(sprintf("Using %d out of %d observations from newdata with complete data.", 
+                  sum(ind_cc), nrow(newdata)))  
+  }
+  newdata_nomiss <- newdata[ind_cc, ]
   mfX_new <- model.frame(TermsX, data = newdata_nomiss)
   X_new <- model.matrix(formYx, mfX_new)
   mfZ_new <- model.frame(TermsZ, data = newdata_nomiss)
   Z_new <- model.matrix(formYz, mfZ_new)
   
   mfZ_2_new <- model.frame(TermsZ_2, data = newdata_nomiss)
-  Z_2_new <- sapply(model.frame(formula("~ Country"), data=newdata_nomiss)[,1], function(x) Z2.icpt[Z2.icpt$country %in% x,2])
+  Z_2_new <- sapply(model.frame(formula("~ Country"), data=newdata_nomiss)[,1], 
+                    function(x) Z2.icpt[Z2.icpt$country %in% x,2])
   
   na_ind <- attr(mfX_new, "na.action")
   y_new <- model.response(mfX_new, "numeric")
@@ -324,8 +330,6 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
     c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
         betas[str_detect(names(betas), paste0(timeVar,":"))]) +
     c(b.new[,str_detect(colnames(b.new), "Time")])
-  
-
   
   # ------ Prediction interval
   V.fe.dev <- V.fe[str_detect(rownames(V.fe), "Time"), str_detect(colnames(V.fe), "Time")]

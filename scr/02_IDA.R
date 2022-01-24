@@ -174,7 +174,6 @@ Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
 # ------------------------------ TABLE 1 -----------------------------------
 ####################################################################################################
 data.tmp <- data.full[data.full$Time_cat==0,]
-pred.
 table1 <- CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), strata="Cohort", test=F)
 write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_dev.xlsx"),  overwrite = TRUE)
 CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
