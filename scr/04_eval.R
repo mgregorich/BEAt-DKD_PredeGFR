@@ -1,13 +1,11 @@
-##################################################
+#===============================================================================#
 # Author: Mariella Gregorich
 # Date: 30/06/2021
-# Info: Model evaluation
-###################################################
+# Info: Model evaluation of the cross-validated and bias-corrected model results
+#===============================================================================#
 
 
-# --------------- Model discrimination, precision and fit ----------------------
-
-
+# =============== Table: Model discrimination, precision and fit =====================
 tbl_performance <- list()
 tbl_performance[[1]] <- df.stats %>%
   group_by(Time) %>%
@@ -41,17 +39,19 @@ tbl_performance[[4]] <-df.tmp %>%
   dplyr::select(Time, N, N.ci, R2, R2.ci, C, C.ci, CS, CS.ci) 
 
 names(tbl_performance) <- c("avg", "ci.lo", "ci.up", "reported")
-write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val_full.xlsx"), overwrite = F)
+write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val_full.xlsx"), overwrite = T)
 
 
 
-# ----------------------------- Calibration (continuous) ------------------------------------
+# ===================== Calibration (continuous) ==============================
 
 for(t in 2:7){
   # Before update
-  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$prior.pred, time=t, save=T, out.path = out.path, cohort="dev", type="preUp")
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$prior.pred, 
+                        time=t, save=T, out.path = out.path, cohort="dev", type="preUp")
   # After update
-  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$pred, time=t, save=T, out.path = out.path, cohort="dev", type="postUp")
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$pred, 
+                        time=t, save=T, out.path = out.path, cohort="dev", type="postUp")
 }
 
 ggplot(df.preds, aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
@@ -67,7 +67,7 @@ ggsave(paste0(out.path, "fig_calibration_all_dev_post.tiff"),  width=8, height=6
 
 
 
-# -------------------- Calibration: Probability of progression ------------------------
+# ==================== Calibration: Probability of progression =================
 pred_prob = df.preds[df.preds$Time==0,]$pred.prob
 true_prob = df.preds[df.preds$Time==0,]$true.prob
 plot_calibration_bin(pred=pred_prob, true=as.factor(true_prob), out.path = out.path, save=F)
@@ -84,52 +84,34 @@ tiff(paste0(out.path, "hist_slopes.png"),
      width = 5, height = 4, units = 'in',
      compression = c( "lzw"))
 hist(df.preds$pred.slope, main = "Predicted eGFR slope")
-hist(df.preds$true.slope.mm, main = "Observed eGFR slope (MM)")
+hist(df.preds$true.slope, main = "Observed eGFR slope (LM)")
 dev.off()
 
-ggplot(df.preds, aes(x=pred.slope, y=true.slope.mm)) +
+ggplot(df.preds, aes(x=pred.slope, y=true.slope)) +
   geom_point() +
   geom_abline(intercept = 0, col="red") + 
   scale_x_continuous("Predicted eGFR slope ") +
-  scale_y_continuous("Observed eGFR slope (MM)") +
-  theme_bw() +
-  theme(text=element_text(size=16))
-ggsave(paste0(out.path, "fig_prob_progression_full.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
-
-ggplot(df.preds, aes(x=true.slope.mm, y=true.slope)) +
-  geom_point() +
-  geom_abline(intercept = 0, col="red") + 
-  scale_x_continuous("Observed eGFR slope (MM)") +
   scale_y_continuous("Observed eGFR slope (LM)") +
   theme_bw() +
   theme(text=element_text(size=16))
-ggsave(paste0(out.path, "fig_prob_progression_mm.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
-
-ggplot(df.preds[df.preds$true.slope.mm < 4 & df.preds$true.slope.mm >-4 ,], aes(x=pred.slope, y=true.slope.mm)) +
-  geom_point() +
-  geom_abline(intercept = 0, col="red") + 
-  scale_x_continuous("Predicted eGFR slope ") +
-  scale_y_continuous("Observed eGFR slope (MM)") +
-  ggtitle("Only slopes in between -4 and 4") +
-  theme_bw() +
-  theme(text=element_text(size=16))
-ggsave(paste0(out.path, "fig_prob_progression_red.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(paste0(out.path, "fig_prob_progression_full.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 # Pick individual with largest deviation of treu and predicted
 df.preds[which.max(df.preds$true.slope - df.preds$pred.slope),]$PatID
 
-# ---------------------------- Model fit ---------------------------------------
 
-# ----- Plot subject-specific trajectories
+# ==========================  Estimated eGFR slopes  ===============
+
+# ----- Plot individual-specific trajectories
 which.max(abs(coef(fit.final)$PatID[,"Time"]))
 
 set.seed(666)
-df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.lo", "pred.up", "true.slope", "true.slope.mm","pred.slope")], id.vars = c("PatID","Time", "pred.lo", "pred.up", "true.slope", "true.slope.mm", "pred.slope"))
+df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.lo", "pred.up", "true.slope", "pred.slope")], id.vars = c("PatID","Time", "pred.lo", "pred.up", "true.slope", "pred.slope"))
 df.melt.small <- df.melt[df.melt$PatID %in% c(sample(unique(df.melt$PatID),16)),]
 df.melt.small$Time <- as.numeric(df.melt.small$Time)
 graphLabels <- df.melt.small[!duplicated(df.melt.small$PatID),]
-graphLabels$label1 = paste0("Obs.(LM): ", round(graphLabels$true.slope,2), "\nObs.(MM): ", round(graphLabels$true.slope.mm,2), "\nPred: ", round(graphLabels$pred.slope,2))
+graphLabels$label1 = paste0("Obs.(LM): ", round(graphLabels$true.slope,2), "\nPred: ", round(graphLabels$pred.slope,2))
 
 ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   geom_ribbon(aes(x=Time, ymax=pred.up, ymin=pred.lo), fill="blue", alpha=.05) +
@@ -162,7 +144,7 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
 
 
 
-# ---- subject specific trajectories, comparing updated and no-update predictions
+# ---- Individual specific trajectories, comparing updated and no-update predictions
 df.melt_0 <- melt(df.preds[df.preds$Time==0,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
 df.melt.small_0 <- df.melt_0[df.melt_0$PatID %in% unique(df.melt.small$PatID), ]
 df.melt.small_0$variable = "pred_0"
@@ -182,6 +164,7 @@ ggplot(data =df.melt.small_0, aes(x = Time, y = value,  col=variable)) +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev_noUpdate.png"),width=10, height=6)
+
 
 # ---- Mean country trajectories
 df.preds %>%
@@ -205,8 +188,8 @@ ggsave(paste0(out.path, "fig_longiObs_eGFR.png"),width=12, height=6)
 
 
 # Longitudinal trajectory of predicted eGFR per cohort
+data.diacore$Cohort <- as.factor(data.diacore$Cohort)
 df.tmp <- data.frame(rbind(df.preds[,c("Time_cat", "FU_eGFR_epi", "Cohort")], data.diacore[,c("Time_cat", "FU_eGFR_epi", "Cohort")]))
-df.tmp$Cohort <- as.factor(df.tmp$Cohort)
 df.tmp$Time_cat <- as.factor(df.tmp$Time_cat)
 df.tmp <- df.tmp[!is.na(df.tmp$Time_cat),]
 ggplot(df.tmp,aes(x = Time_cat, y = FU_eGFR_epi, fill=Cohort))  +
@@ -223,8 +206,8 @@ ggsave(paste0(out.path, "fig_longiobs_eGFR_cohort.png"),width=10, height=6)
 
 # ---- Longitudinal trajectory of predicted eGFR per country
 ggplot(df.preds,aes(x = Time, y = pred, fill=Country))  +
-  geom_boxplot(aes(x=Time, fill=Country), outlier.shape = NA) +
-  stat_boxplot(aes(fill=Country),geom ='errorbar') +
+  geom_boxplot(aes(x=Time), outlier.shape = NA) +
+  stat_boxplot(geom ='errorbar') +
   scale_y_continuous("Predicted eGFR") +
   theme_bw() +
   theme(text = element_text(size=16))
@@ -233,8 +216,8 @@ ggsave(paste0(out.path, "fig_longipred_eGFR.png"),width=12, height=6)
 # ---- Longitudinal trajectory of predicted eGFR per cohort
 df.preds$Cohort <- as.factor(df.preds$Cohort)
 ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
-  geom_boxplot(aes(x=Time, fill=Cohort), outlier.shape = NA) +
-  stat_boxplot(aes(fill=Cohort),geom ='errorbar') +
+  geom_boxplot(aes(x=Time), outlier.shape = NA) +
+  stat_boxplot(geom ='errorbar') +
   scale_y_continuous("Predicted eGFR") +
   scale_fill_manual(values=c("orange1", "royalblue1"), labels=c("GCKD", "PROVALID")) +
   theme_bw() +
@@ -242,28 +225,41 @@ ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
 ggsave(paste0(out.path, "fig_longipred_eGFR_cohort_dev.png"),width=10, height=6)
 
 
-# ---- Forest plot of model coefficients
-df <- data.frame(variable=rownames(summary(fit.final)$coefficients),
-                 effect=summary(fit.final)$coefficients[,1],
-                 lower=summary(fit.final)$coefficients[,1] - 1.96*summary(fit.final)$coefficients[,2],
-                 upper=summary(fit.final)$coefficients[,1] + 1.96* summary(fit.final)$coefficients[,2])
+# ===================== Forest plot of standardized coefficients ===============
+data.scaled <- data.full %>%mutate_at(vars(Time, BL_age, BL_bmi, BL_map, BL_hba1c, 
+                                           BL_serumchol, BL_hemo, BL_uacr_log2, FU_eGFR_epi), scale)
+fit.scaled <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
+                                                   BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
+                   data=data.scaled, REML=F, control=lmerControl(optimizer="bobyqa"))
+
+df <- data.frame(variable=rownames(summary(fit.scaled)$coefficients),
+                 effect=summary(fit.scaled)$coefficients[,1],
+                 lower=summary(fit.scaled)$coefficients[,1] - 1.96*summary(fit.scaled)$coefficients[,2],
+                 upper=summary(fit.scaled)$coefficients[,1] + 1.96* summary(fit.scaled)$coefficients[,2]) 
 df$variable <- factor(df$variable, levels = df$variable[length(df$variable):1])
+df$Group <- ifelse(str_detect(df$variable, "Time:"), "Effect on eGFR slope", "Effect on eGFR value")
+df <- mutate(df, Group = fct_rev(Group)) 
+df$variable <- as.factor(str_replace(df$variable, "Time:", ""))
+df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_sex1","BL_bmi","BL_smoking1","BL_map","BL_hba1c","BL_serumchol", "BL_hemo",
+                                            "BL_uacr_log2", "BL_med_dm1","BL_med_bp1","BL_med_lipid1"))
+levels(df$variable) <- list("Intercept"="(Intercept)","Time"="Time", Age  = "BL_age", "Sex (female)" = "BL_sex1", BMI="BL_bmi", "Smoking (ever)"="BL_smoking1", MAP="BL_map", Hba1C="BL_hba1c",
+                            "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", "Glucose-low. Med."="BL_med_dm1", "Blood pressure-low. Med."="BL_med_bp1", "Lipid-low. Med."="BL_med_lipid1")
+
 
 head(df)
-ggplot(data=df[-1,], aes(y=variable, x=effect, xmin=lower, xmax=upper)) +
-  geom_point() + 
-  geom_errorbarh(height=.1) +
-  scale_y_discrete("", labels=c("(Intercept)"="Intercept","BL_age"="Age", "BL_sex1"="Sex", "BL_bmi"="BMI", "BL_smoking1"="Smoking", "BL_map"="MAP", "BL_hba1c_perc"="Hba1c","BL_serumchol"= "Serum chol.",
-                                "BL_hemo"="Hemoglobin", "BL_uacr_log2"="log2UACR", "BL_med_dm1"="GL Med.", "BL_med_bp1"="BPL Med.", "BL_med_lipid1"="LL Med.",
-                                "Time:BL_age"="Time:Age", "Time:BL_sex1"="Time:Sex", "Time:BL_bmi"="Time:BMI", "Time:BL_smoking1"="Time:Smoking", "Time:BL_map"="Time:MAP",
-                                "Time:BL_hba1c_perc"="Time:Hba1c","Time:BL_serumchol"= "Time:Serum chol.", "Time:BL_hemo"="Time:Hemoglobin", "Time:BL_uacr_log2"="Time:log2UACR", 
-                                "Time:BL_med_dm1"="Time:GL Med.", "Time:BL_med_bp1"="Time:BPL Med.","Time:BL_med_lipid1"="Time:LL Med." )) +
-  scale_x_continuous("Effect") +
+ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lower, xmax=upper)) +
+  geom_point(size=2, shape=1) + 
+  geom_errorbarh(height=.25) +
+  scale_y_discrete("") +
+  scale_x_continuous("Standardized Effect") +
+  geom_vline(xintercept=0, linetype="dashed", color = "red") +
+  facet_wrap(~Group, scales="free_x") +
   theme_bw() +
   theme(text = element_text(size = 12))
-ggsave(paste0(out.path, "forest_plot.png"),width=6, height=6)
+ggsave(paste0(out.path, "plot_forest_standardized.tiff"),  width=8, height=4, device='tiff', dpi=350, compression = 'lzw')
 
-# Table of model coefficients
+
+# ================= Table: Model coefficients ================================
 df[,2:4] <- apply(df[,2:4],2, round, digits=3)
 df$name <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hba1c","Serum chol.",
                                       "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
@@ -272,7 +268,7 @@ tbl_fixeff <- cbind(df[!str_detect(df$variable, "Time"),c(5,2,6)], df[str_detect
 write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"), overwrite = TRUE)
 
 
-# ---- Individual risk predictions
+# ====================== Individual risk predictions ==========================
 df.preds.t0 <- df.preds[df.preds$Time==0,]
 
 ggplot(df.preds.t0, aes(x=pred.prob, fill=Cohort)) +
@@ -290,74 +286,127 @@ summary(df.preds.t0[df.preds.t0$Cohort==1,]$pred.prob)
 
 
 
-# ---------- Partial explained variance of individual predictors ---------
+# ================= Partial explained variance of individual predictors ========
 
-# (1) With partR2 function
-#remotes::install_github("mastoffel/partR2") 
-library(partR2)
-library(future)
-library(furrr)
+# # (1) With partR2 function
+# #remotes::install_github("mastoffel/partR2") 
+# library(partR2)
+# library(future)
+# library(furrr)
+# 
+# 
+# pred.batch <-list(Sex = c("BL_sex","Time:BL_sex"),Age = c("BL_age","Time:BL_age"), 
+#                   BMI = c("BL_bmi","Time:BL_bmi"), Smoking = c("BL_smoking","Time:BL_smoking"),
+#                   MAP = c("BL_map","Time:BL_map"), Hba1C = c("BL_hba1c","Time:BL_hba1c"),
+#                   SerumChol = c("BL_serumchol","Time:BL_serumchol"), Hemoglobin = c("BL_hemo","Time:BL_hemo"),
+#                   log2UACR = c("BL_uacr_log2","Time:BL_uacr_log2"), Med_DM = c("BL_med_dm","Time:BL_med_dm"),
+#                   Med_BP = c("BL_med_bp","Time:BL_med_bp"), Med_Lipid = c("BL_med_lipid","Time:BL_med_lipid"))
+# p=1
+# partial.R2.cond <- partial.R2.marg <- list()
+# for(p in 1:length(pred.batch)){
+#   print(paste0("Partial R2 for variable number = ",p))
+#   plan(multisession, workers=detectCores()-2)
+#   partial.R2.cond[[p]] <- partR2(fit.final, partbatch = list(c(pred.batch[[p]])),
+#                                  R2_type = "conditional", nboot = nboot,
+#                                  allow_neg_r2 = T, parallel = T,
+#                                  data=data.full)$R2  
+#   partial.R2.marg[[p]] <- partR2(fit.final, partbatch = list(c(pred.batch[[p]])),
+#                                  R2_type = "marginal", nboot = nboot,
+#                                  allow_neg_r2 = T, parallel = T,
+#                                  data=data.full)$R2 
+#   plan(sequential)
+# }
+# 
+# partR2.cond <- data.frame(do.call(rbind, partial.R2.cond)) %>%
+#   distinct(term, estimate, .keep_all = TRUE) %>%
+#   mutate(drop.R2=first(estimate)-estimate) %>%
+#   mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
+# partR2.marg <- data.frame(do.call(rbind, partial.R2.marg)) %>%
+#   distinct(term, estimate, .keep_all = TRUE) %>%
+#   mutate(drop.R2=first(estimate)-estimate) %>%
+#   mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
+# 
+# partial.R2 <- list("Marginal"=partR2.marg, "Conditional"=partR2.cond)
+# 
+# write.xlsx(partial.R2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = T)
+# 
+# 
 
 
-pred.vars <- c("BL_age","BL_sex","BL_bmi", "BL_smoking", "BL_map",
-               "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr_log2",
-               "BL_med_dm", "BL_med_bp", "BL_med_lipid")
-pred.batch <-list(Sex = c("BL_sex","Time:BL_sex"),Age = c("BL_age","Time:BL_age"), 
-                  BMI = c("BL_bmi","Time:BL_bmi"), Smoking = c("BL_smoking","Time:BL_smoking"),
-                  MAP = c("BL_map","Time:BL_map"), Hba1C = c("BL_hba1c","Time:BL_hba1c"),
-                  SerumChol = c("BL_serumchol","Time:BL_serumchol"), Hemoglobin = c("BL_hemo","Time:BL_hemo"),
-                  log2UACR = c("BL_uacr_log2","Time:BL_uacr_log2"), Med_DM = c("BL_med_dm","Time:BL_med_dm"),
-                  Med_BP = c("BL_med_bp","Time:BL_med_bp"), Med_Lipid = c("BL_med_lipid","Time:BL_med_lipid"))
-p=1
-partial.R2.cond <- partial.R2.marg <- list()
-for(p in 1:length(pred.batch)){
-  print(paste0("Partial R2 for variable number = ",p))
-  plan(multisession, workers=detectCores()-2)
-  partial.R2.cond[[p]] <- partR2(fit.final, partbatch = list(c(pred.batch[[p]])),
-                                 R2_type = "conditional", nboot = 1000,
-                                 allow_neg_r2 = T, parallel = T,
-                                 data=data.full)$R2  
-  partial.R2.marg[[p]] <- partR2(fit.final, partbatch = list(c(pred.batch[[p]])),
-                                 R2_type = "marginal", nboot = 1000,
-                                 allow_neg_r2 = T, parallel = T,
-                                 data=data.full)$R2 
-  plan(sequential)
-}
-
-partR2.cond <- data.frame(do.call(rbind, partial.R2.cond)) %>%
-  distinct(term, estimate, .keep_all = TRUE) %>%
-  mutate(drop.R2=first(estimate)-estimate) %>%
-  mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
-partR2.marg <- data.frame(do.call(rbind, partial.R2.marg)) %>%
-  distinct(term, estimate, .keep_all = TRUE) %>%
-  mutate(drop.R2=first(estimate)-estimate) %>%
-  mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
-
-partial.R2 <- list("Marginal"=partR2.marg, "Conditional"=partR2.cond)
-
-write.xlsx(partial.R2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = TRUE)
 
 
 #  (2) Manual
-# r2.final <- r.squaredGLMM(fit.final)
-# out <- list()
-# for(i in 1:length(pred.vars)){
-#   model.vars <- pred.vars[-i]
-#   model.formula <- as.formula(paste0("FU_eGFR_epi ~ (Time + Time  *(",paste(model.vars,collapse="+") ,") + (1|Country) + (1+Time|PatID))"))
-#   fit.tmp <- lmer(model.formula,
-#                   data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
-#   r2 <- r.squaredGLMM(fit.tmp)
-#   drop.r2 <- r2.final - r2
-# 
-#   out[[i]] <- c("pred.vars"=pred.vars[i], "R2m"=r2[1], "R2c"=r2[2], "drop.R2m"=drop.r2[1], "drop.R2c"=drop.r2[2])
-# }
-# 
-# res <- do.call(rbind, out)
-# tmp <- res %>%
-#   data.frame() %>%
-#   mutate_at(2:5, as.numeric) %>%
-#   mutate(scaled.dropR2m = (drop.R2m/sum(drop.R2m))*r2.final[1],
-#          scaled.dropR2c = (drop.R2c/sum(drop.R2c))*r2.final[2]) %>%
-#   mutate_at(2:7, round, 4)
-# tmp
-# sum(tmp$scaled.dropR2c)
+b=5
+i=1
+tbl_partialR2 <- data.frame(matrix(NA, nrow=13, ncol = 7))
+colnames(tbl_partialR2) <- c("term", "R2m", "R2m.lo",  "R2m.up", "R2c",  "R2c.lo", "R2c.up")
+
+# --- Full
+plan(multisession, gc=T, workers=detectCores()*.6)
+out <- t(future_sapply(1:b, function(x) {
+  data.boot <- draw_bootstrap_sample(data.full)
+  fit.full <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
+                                                   BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
+                   data=data.boot, REML=F, control=lmerControl(optimizer="bobyqa"))
+  r2.full <- r.squaredGLMM(fit.full)
+  return(r2.full)
+  }, future.seed = T))
+plan(sequential)
+tbl_partialR2[i, ] <- c("Full", apply(out, 2, function(x) c(mean(x), quantile(x, 0.05), quantile(x, 0.95)))) 
+
+
+
+# --- Partial
+for(i in 1:length(pred.vars)){
+  # Reduced
+  model.vars <- pred.vars[-i]
+  model.formula <- as.formula(paste0("FU_eGFR_epi ~ (Time + Time  *(",paste(model.vars,collapse="+") ,") + (1|Country) + (1+Time|PatID))"))
+  plan(multisession, gc=T, workers=detectCores()*.6)
+  out <- t(future_sapply(1:b, function(x) {
+    data.boot <- draw_bootstrap_sample(data.full)
+    fit.tmp <- lmer(model.formula,
+                    data=data.boot, REML=F, control=lmerControl(optimizer="bobyqa"))
+    r2.tmp <- r.squaredGLMM(fit.tmp)
+    return(r2.tmp)
+  }, future.seed = T))
+  plan(sequential)
+  
+  tbl_partialR2[i+1, ] <- c(pred.vars[i], apply(out, 2, function(x) c(mean(x), quantile(x, 0.05), quantile(x, 0.95)))) 
+}
+write.xlsx(tbl_partialR2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = T)
+
+
+# --- Visualization
+tbl_partR2 <- read.xlsx(paste0(out.path, "tbl_partialR2.xlsx"))
+tbl_partR2$term <- as.factor(tbl_partR2$term)
+levels(tbl_partR2$term) <- list("Full Model"="Full",Age  = "BL_age", "Sex" = "BL_sex", BMI="BL_bmi", "Smoking"="BL_smoking", MAP="BL_map", Hba1C="BL_hba1c",
+                                "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", 
+                                "Glucose-low. Med."="BL_med_dm", "Blood pressure-low. Med."="BL_med_bp", "Lipid-low. Med."="BL_med_lipid")
+tmp1 <- tbl_partR2[,c("term","R2m", "R2m.lo", "R2m.up")]
+tmp1$type <- "marginal"
+tmp2 <- tbl_partR2[,c("term","R2c", "R2c.lo", "R2c.up")]
+tmp2$type <- "conditional"
+names(tmp1) <- names(tmp2) <- c("term", "est", "ci.lo", "ci.up", "type")
+
+tbl_partR2 <- data.frame(rbind(tmp1, tmp2))
+tbl_partR2[,2:4] <- apply(tbl_partR2[,2:4], 2, as.numeric)
+dummy <- data.frame(type = c("marginal", "conditional"), 
+                    val = c(tbl_partR2[tbl_partR2$term %in% "Full Model",]$est[1], 
+                            tbl_partR2[tbl_partR2$term %in% "Full Model",]$est[2]),
+                    cols=c("skyblue4", "skyblue2"))
+
+ggplot(tbl_partR2, aes(x=est, y=term, col=type)) +
+  geom_point() +
+  geom_line() +
+  geom_errorbarh(aes(xmin = ci.lo, xmax=  ci.up), height=0.25) +
+  geom_vline(data=dummy, aes(xintercept=val, colour=cols), size=0.2, linetype="dashed") +
+  scale_y_discrete("",limits=rev) +
+  scale_x_continuous("Partial R2 and 95% CI") +
+  scale_color_manual("", values=c("skyblue2", "skyblue4","skyblue2", "skyblue4")) +
+  theme_bw() +
+  theme(text=element_text(size=16), legend.position = "None",
+        axis.text.y = element_text(face = c('plain', 'plain', 'plain', 'plain', 'plain', 'plain', 
+                                            'plain', 'plain', 'plain', 'plain', 'plain', 'plain','bold'))) +
+  facet_wrap(~type, scales="free_x")
+ggsave(paste0(out.path, "fig_partialR2_bold.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+

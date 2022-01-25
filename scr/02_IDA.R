@@ -1,16 +1,19 @@
-###################################################
+#===============================================================================#
 # Author: Mariella Gregorich
 # Date: 30/06/2021
 # Info: Initial data analysis: data screening & cleaning
-###################################################
+#===============================================================================#
 
 
-####################################################################################
-## ----- Descriptive statistics & data inspection
-##################################################################################
+
+# =================== Descriptive statistics & data inspection =================
+
 # Number of subjects per country and cohort
 table(data.full[!duplicated(data.full$PatID),]$Cohort)
 table(data.full[!duplicated(data.full$PatID),]$Country)
+
+# Number of subjects stratified by country and follow-up
+table(data.full$Country,data.full$Time_cat)
 
 # Number of time points per cohort
 table(data.full[data.full$Cohort==0,]$Time_cat)
@@ -66,7 +69,7 @@ data.full %>% filter(Time_cat==6) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR -
 par(mfrow = c(1,1))
 
 
-# ---------- Correlation matrix
+# ======================= Correlation heatmap ===================================
 x_tmp <- data.frame(model.matrix(FU_eGFR_epi~BL_age + BL_sex + BL_smoking + BL_bmi + BL_map + BL_hba1c 
                       + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid, 
                       data=data.full[data.full$Time_cat==0,])[,-1])
@@ -74,9 +77,15 @@ colnames(x_tmp) <- c("Age", "Sex", "Smoking", "BMI", "MAP", "Hba1C", "Serum chol
 corr <- cor(x_tmp)
 (abs(corr)>0.5)
 
-melted_cormat <- melt(round(corr,2))
-ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) + 
-  geom_tile(color = "white")+
+melted_cormat <- melt(round(corr,4))
+corr[lower.tri(corr)]<-NA
+diag(corr) <- NA
+melted_cormat$value_label <- round_0(c(corr),2)
+melted_cormat$value_label <- ifelse(melted_cormat$value_label %in% "NA", NA, melted_cormat$value_label)
+
+ggplot(data = melted_cormat, aes(x=Var1, y=reorder(Var2, desc(Var2)), fill=value)) + 
+  geom_tile() +
+  geom_text(aes(label = value_label), size = 4) +
   scale_x_discrete("") +
   scale_y_discrete("") +
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
@@ -89,25 +98,18 @@ ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) +
 ggsave(paste0(out.path, "fig_correlation.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
-# ------ Bivariate distribution
-plot_fun <- function( x, y, time=0 ){
-  df <- data.frame(dep=as.numeric(unlist(data.full[data.full$Time_cat==time, x])),indep=as.numeric(unlist(data.full[data.full$Time_cat==time, y])))
-  ggplot(df, aes(x=dep, y=indep)) + 
-    geom_point() +
-    scale_x_continuous(name = x)+
-    scale_y_continuous(name = y) +
-    theme_bw()
-}
+
+# ================================ Bivariate distribution ======================
 
 cont.vars <- c("BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
                "BL_serumchol", "BL_hemo", "BL_uacr_log2")
 pairw.int <- expand.grid(cont.vars, cont.vars)
 pairw.int <- pairw.int[!pairw.int[,1]==pairw.int[,2],]
 plots <- lapply(1:nrow(pairw.int), function(x) plot_fun(x=pairw.int[x,1], y=pairw.int[x,2], time=0))
-#plots
 
 
-# ---- Check non-linearities
+
+# ========================== Check non-linearities =============================
 plots <- lapply(cont.vars, function(x) plot_fun(x=x, y="FU_eGFR_epi", time=1))
 #plots
 
@@ -115,7 +117,7 @@ plots <- lapply(cont.vars, function(x) plot_fun(x=x, y="FU_eGFR_epi", time=1))
 plots[[3]]
 
 
-# ----- Temporal deviation from the follow-up years
+# ======================== Longitudinal measurement analysis =========
 summary(data.full[data.full$Time_cat==0,]$Time_cont)
 summary(data.full[data.full$Time_cat==1,]$Time_cont)
 summary(data.full[data.full$Time_cat==2,]$Time_cont)
@@ -124,7 +126,6 @@ summary(data.full[data.full$Time_cat==4,]$Time_cont)
 summary(data.full[data.full$Time_cat==5,]$Time_cont)
 summary(data.full[data.full$Time_cat==6,]$Time_cont)
 summary(data.full[data.full$Time_cat==7,]$Time_cont)
-
 
 
 # --- Median and IQR of eGFR decline per year & true progression estimation
@@ -148,45 +149,63 @@ tmp <- data.diacore %>%
 mean(tmp$max_time)
 hist(tmp$max_time)
 
-#####################################################################################################
-# ------------------------------ TABLE 1 -----------------------------------
-####################################################################################################
-data.tmp <- data.full[data.full$Time_cat==0,]
-table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
-                                          "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), strata="Cohort", test=F)
-write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_dev.xlsx"),  overwrite = TRUE)
-CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
-                                      "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid"),  test=F)
-
-data.tmp <- data.diacore[data.diacore$Time_cat == 0,]
-table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
-                                                "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), test=F)
-write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_val.xlsx"), overwrite=T)
-
-data.tmp <- data.full[data.full$Time_cat==0,]
-table1 <- CreateTableOne(data=data.tmp, vars= c("BL_age", "BL_sex", "BL_smoking", "BL_bmi", "BL_map","BL_bpsys", "BL_bpdia", "BL_hba1c_perc", 
-                                                "BL_serumchol", "BL_hemo", "BL_uacr", "FU_eGFR_epi","BL_med_dm", "BL_med_bp", "BL_med_lipid"), test=F)
-write.xlsx(as.data.frame.matrix(print(table1)), paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
-
 # ------------- Table: longitudinal eGFR measurements stratified by cohort
 table(data.full$Time_cat, data.full$Cohort)
 table(data.diacore$Time_cat)
 
 
-########################################################################################################
-# --------------- Sample size calculation -------------------------------------------------------
-########################################################################################################
-library(pmsampsize)
+# =========================== CKD stage at baseline ============================
+data.tmp <- data.full %>%
+  filter(Time_cat==0) %>%
+  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi >=90, 1, ifelse(FU_eGFR_epi >=60, 2, 3))))
 
+ggplot(data.tmp, aes(x=CKDstage, fill=Cohort)) +
+  geom_bar(stat="count") +
+  theme_bw() +
+  facet_wrap(~Cohort)
+
+Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
+     "CKD2"=(sum(data.tmp$CKDstage==2)/nrow(data.tmp))*100,
+     "CKD3"=(sum(data.tmp$CKDstage==3)/nrow(data.tmp))*100)
+
+data.tmp <- data.diacore %>%
+  filter(Time_cat==0) %>%
+  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi >=90, 1, ifelse(FU_eGFR_epi >=60, 2, 3))))
+Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
+                       "CKD2"=(sum(data.tmp$CKDstage==2)/nrow(data.tmp))*100,
+                       "CKD3"=(sum(data.tmp$CKDstage==3)/nrow(data.tmp))*100)
+
+
+
+
+# ================================ TABLE 1: Patient characteristics at baseline ====================================
+
+# Strafied by cohort
+data.tmp <- data.full[data.full$Time_cat==0,]
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), strata="Cohort", test=F)))
+table1_dev <- data.frame(names=row.names(table1), table1) 
+
+data.tmp <- data.diacore[data.diacore$Time_cat == 0,]
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), test=F)))
+table1_val <- data.frame(names=row.names(table1), table1) 
+
+table1_all <- full_join(table1_dev, table1_val, by="names") %>%
+  `colnames<-`(c("Variable", "GCKD", "PROVALID", "DIACORE"))
+write.xlsx(table1_all, paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
+
+# For the development cohort in total
+data.tmp <- data.full[data.full$Time_cat==0,]
+CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), test=F)
+
+
+# =============================== Sample size calculation ======================
 pmsampsize(type = "c", rsquared = 0.7, parameters = 13, intercept = 78.4, sd = 21.4, shrinkage = 0.99)
 
 
 
-#########################################################################################################
-# ----------- INITIAL MODEL BUILDING (Apparent)- Non-linearities? Interactions? -------------------------
-##########################################################################################################
+# ================= INITIAL MODEL BUILDING (Apparent)- Non-linearities? Interactions? =======================
 
-# # ---------- Non-linear effects
+# # ---------------- (1)  Non-linear effects -------------------
 # # Fit model and check for non-linear behavior in residuals vs independent variables
 # fit.init <- lme(fixed=FU_eGFR_epi ~ (Time_cat + Time_cat * (BL_bmi + BL_age + BL_sex + BL_smoking + BL_bpsys + BL_bpdia + 
 #                                                       BL_hba1c + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)), 
@@ -236,7 +255,7 @@ pmsampsize(type = "c", rsquared = 0.7, parameters = 13, intercept = 78.4, sd = 2
 # 
 # 
 # 
-# # --------------------------- Pairwise interactions -------------------------------------------
+# # ----------------------- (2) Pairwise interactions -------------------------
 # out.step <- stepAIC(fit.tmp2, 
 #                     direction = 'forward', 
 #                     scope=list(upper = ~ (Time_cat + Time_cat * (BL_bmi + BL_age + BL_sex + BL_smoking + 
@@ -247,7 +266,7 @@ pmsampsize(type = "c", rsquared = 0.7, parameters = 13, intercept = 78.4, sd = 2
 # 
 # 
 # 
-# # -------------------  Mixed model - Substantial increase in R2 of the more complex model ? ---------
+# # ------------------------- (3) Substantial increase in R2 of the more complex model ? -----------
 # # Linear model
 # fit.final <- lme(fixed=FU_eGFR_epi ~ (Time_cat + Time_cat * (BL_bmi + BL_age + BL_sex + BL_smoking + BL_bpsys + BL_bpdia + BL_hba1c + BL_serumchol +
 #                                                        BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid)),

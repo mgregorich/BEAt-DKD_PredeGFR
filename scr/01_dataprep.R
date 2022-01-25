@@ -1,75 +1,23 @@
-###################################################
+#===============================================================================#
 # Author: Mariella Gregorich
 # Date: 30/06/2021
 # Info: Data preparation of PROVALID & GCKD
-###################################################
+#===============================================================================#
 
 
 
-## -------------------------- FUNCTIONS -----------------------------------------------
-
-getProvalidFU <- function(sheet, path){
-  df <- read_excel(path, sheet)
-  df <- clean_names(df)
-  rel.cols <- c("patient_reference_id", "date_yyyy_mm_dd_10","serum_creatinine_mg_dl", "serum_creatinine_mmol_l")
-  df <- df[,rel.cols]
-  df$source <- sheet
-  df$time <- ifelse(str_detect(sheet, "FOLLOW-UP"), str_match(sheet, "FOLLOW-UP\\s*(.*?)\\s*LOCAL LABORATORY")[,2], "0")
-  df$FU_serumcrea <- ifelse(is.na(df$serum_creatinine_mg_dl), df$serum_creatinine_mmol_l/100, df$serum_creatinine_mg_dl)
-  df <- df[!is.na(df$FU_serumcrea),]
-  colnames(df)[1] <- "Patient reference [ID]"
-
-  return(df)
-}
-
-calcBMI <- function(height_m, weight_kg){
-  BMI <-(weight_kg/height_m^2)
-  return(BMI)
-}
-
-calcUACR <- function(df){
-  # df= data.provalid
-  
-  df <- df %>%
-    mutate(urin_alb1st_mg_dl = ifelse(is.na(x1st_urinary_albumin_mg_l), x1st_urinary_albumin_g_l*100, x1st_urinary_albumin_mg_l/10),
-           urin_alb2nd_mg_dl = ifelse(is.na(x2nd_urinary_albumin_mg_l), x2nd_urinary_albumin_g_l*100, x2nd_urinary_albumin_mg_l/10),
-           urin_alb3rd_mg_dl = ifelse(is.na(x3rd_urinary_albumin_mg_l), x3rd_urinary_albumin_g_l*100, x3rd_urinary_albumin_mg_l/10),
-           urin_crea1st_g_dl = ifelse(is.na(x1st_urinary_creatinine_mg_dl), x1st_urinary_creatinine_mmol_l*0.01132, x1st_urinary_creatinine_mg_dl/1000),
-           urin_crea2nd_g_dl = ifelse(is.na(x2nd_urinary_creatinine_mg_dl), x2nd_urinary_creatinine_mmol_l*0.01132, x2nd_urinary_creatinine_mg_dl/1000),
-           urin_crea3rd_g_dl = ifelse(is.na(x3rd_urinary_creatinine_mg_dl), x3rd_urinary_creatinine_mmol_l*0.01132, x3rd_urinary_creatinine_mg_dl/1000))
-  
-  urin_alb_mg_dl <- df %>% 
-    dplyr::select(urin_alb1st_mg_dl, urin_alb2nd_mg_dl, urin_alb3rd_mg_dl) %>%
-    mutate(urin_alb_mg_dl = apply(., 1, function(x) first(na.omit(x)))) %>%
-    dplyr::select(urin_alb_mg_dl)
-  
-  
-  urin_crea_g_dl <- df %>% 
-    dplyr::select(urin_crea1st_g_dl, urin_crea2nd_g_dl, urin_crea3rd_g_dl) %>%
-    mutate(urin_crea_g_dl = apply(., 1, function(x) first(na.omit(x)))) %>%
-    dplyr::select(urin_crea_g_dl)
-  
-  UACR_mgg <- (urin_alb_mg_dl/urin_crea_g_dl)[[1]]
-  
-  # Set bl uacr to 0.01 to allow log2 transformation due to skewness
-  UACR_mgg_adj <- ifelse(as.numeric(UACR_mgg) == 0, 0.05, as.numeric(UACR_mgg))
-
-  return(UACR_mgg_adj)
-}
-
-##############################################################################################
-
-
-# ------ Define object for tripod flowchart
+# ============= TRIPOD flowchart setup=============================
 tripod_flowchart <- data.frame("Step"=c("all",  "excl2_baseunder30",  "excl3_nobase", "excl1_not3eGFR","post_excl","completecases","DevCohort"), 
                         "GCKD"=rep(NA,7), 
                         "PROVALID"=rep(NA,7),
                         "DIACORE"=rep(NA,7))
 
-# ------------- Data Pre-processing
+
+
+# ================== Data Pre-processing =======================================
+
 ## -----  DIACORE -----
 data.diacore <-  read_excel(paste0(DIACORE.path, "BeatDKD_DIACORE_V1_V2R_V3R_13Mar2019_korr_13Aug2019_all_variables_nopw.xlsx"))
-tripod_flowchart$DIACORE[1] <- length(unique(data.diacore$patNr))
 data.diacore$visitDate_char_V1=do.call("c",lapply(data.diacore$visitDate_char_V1, recodeDates))
 data.diacore$visitDate_char_V2=do.call("c",lapply(data.diacore$visitDate_char_V2, recodeDates))
 data.diacore$visitDate_char_V3=do.call("c",lapply(data.diacore$visitDate_char_V3, recodeDates))
@@ -105,10 +53,10 @@ data.diacore$Time_cont=ifelse((data.diacore$Time_cat==1), round(difftime(data.di
 data.diacore$Time_cont=ifelse((data.diacore$Time_cat==2), round(difftime(data.diacore$FU2_date,data.diacore$FU0_date,units="days")/365.25,3), data.diacore$Time_cont)
 data.diacore$Time_cat= round(data.diacore$Time_cont)
 
+
+
 ## ----- GCKD ------
 data.gckd <- read_excel(paste0(GCKD.path, "Datenanfrage2_export_20210625.xlsx"))
-tripod_flowchart$GCKD[1] <- length(unique(data.gckd$subjid))
-
 
 data.gckd$eth <- "non-black"
 data.gckd <- data.gckd %>%
@@ -161,7 +109,9 @@ data.gckd <- data.gckd %>%
   mutate(Time_cont = round(difftime(FU_date,BL_ein_visdat,units="days")/365.25,3))
 data.gckd$Time_cat <- round(data.gckd$Time_cont)
 
-## ---  PROVALID -----
+
+
+## -----  PROVALID -----
 file = paste0(PROVALID.path, "PROVALID BASE Final Data Export_Clinical_LocalLab_Endpoints_20200119.xls")
 sheets <- excel_sheets(file)
 fu.sheets <- sheets[str_detect(sheets,"LABORATORY")]
@@ -200,7 +150,6 @@ data.tmp3$date_yyyy_mm_dd_10[substr(data.tmp3$date_yyyy_mm_dd_10,3,3) %in% "4"] 
 data.provalid <- left_join(left_join(data.tmp1, data.tmp2, by="Patient reference [ID]"), 
                            data.tmp3[,c("Patient reference [ID]", "time", "date_yyyy_mm_dd_10","FU_serumcrea")], by="Patient reference [ID]")
 rm(data.tmp1,data.tmp2,data.tmp3)
-tripod_flowchart$PROVALID[1] <- length(unique(data.provalid$`Patient reference [ID]`))
 
 data.provalid <- data.provalid  %>%
   clean_names()
@@ -248,7 +197,7 @@ data.provalid <- data.frame(rbind(tmp1, anti_join(data.provalid, tmp)))
 
   
 
-# ------------ Merge datasets (GCKD and PROVALID) = development cohort
+# =========================== Merge datasets  ==================================
 cols <- c("PatID", "Cohort","Country","Time_cat","Time_cont","FU_date", "FU_eGFR_epi","BL_age", "BL_sex", "BL_smoking",
           "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_hba1c_perc", "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid")
 
@@ -256,6 +205,10 @@ data.all <- rbind(data.provalid[,cols], data.gckd[,cols])
 data.all$Time_cont[data.all$Time_cont <0] <-0
 data.all$Time_cat[data.all$Time_cat <=0] <-0
 data.all$Time_cont[data.all$Time_cat ==0] <-0
+
+tripod_flowchart$PROVALID[1] <- length(unique(data.all[data.all$Cohort %in% "PROVALID",]$PatID))
+tripod_flowchart$GCKD[1] <- length(unique(data.all[data.all$Cohort %in% "GCKD",]$PatID))
+tripod_flowchart$DIACORE[1] <- length(unique(data.diacore$PatID))
 
 
 data.all <- data.all %>%
@@ -267,19 +220,20 @@ data.all <- data.all %>%
 
 
 
-# ------------ Inclusion & Exclusion criteria ----
+
+# ======================== Inclusion & Exclusion criteria ======================
 data.all <- data.all %>%
   mutate(BL_uacr_log2=log(BL_uacr,2),
          Cohort=ifelse(Cohort %in% "PROVALID", 1, 0),     # Code PROVALID = 1, GCKD = 0
-         BL_map = (BL_bpsys+ 2*BL_bpdia)/3) %>%  
-  filter(BL_hemo > 2)                                     # Sorts out values in wrong unit column (g/l instead of g/dL)
+         BL_map = (BL_bpsys+ 2*BL_bpdia)/3,
+         BL_hemo=to_numeric(BL_hemo))              # Sorts out values in wrong unit column (g/l instead of g/dL)
 
 # Exclude Patients that fall below 30 at baseline
 excl_patid_1 <- data.all[data.all$Time_cat==0 & data.all$FU_eGFR_epi <31,]$PatID
 tripod_flowchart$PROVALID[2] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_1,]$PatID))
 tripod_flowchart$GCKD[2] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_1,]$PatID))
 
-drop.egfr30 <- data.diacore[(data.diacore$Time_cat==0 & data.diacore$FU_eGFR_epi < 31),]$PatID
+drop.egfr30 <- unique(data.diacore[(data.diacore$Time_cat==0 & data.diacore$FU_eGFR_epi < 31),]$PatID)
 tripod_flowchart$DIACORE[2] <- length(drop.egfr30)
 
 # Exclude patients with no baseline value
@@ -312,7 +266,7 @@ tripod_flowchart$DIACORE[5] <- length(unique(data.diacore$PatID))
 
 
 
-# --------- Complete-cases ----
+# =========================== Complete-cases ===================================
 data.full <- data.all[complete.cases(data.all),]
 data.full$Country <- factor(data.full$Country, levels=c("AT", "GE", "HU", "PL", "UK", "NL"))
 data.rem <- data.all[!complete.cases(data.all),]
@@ -333,29 +287,21 @@ tripod_flowchart$PROVALID[7] <- length(unique(data.full$PatID))
 tripod_flowchart$GCKD[7] <- length(unique(data.full$PatID))
 tripod_flowchart$DIACORE[7] <- length(unique(data.diacore$PatID))
 
-
 tripod_flowchart
 
 
-# --- True progression estimation ----
+# ==================== True progression slope estimation ============================
 
-
-
-
+# Development cohort
 df.tmp <- data.full %>%
   group_by(PatID) %>%
   summarise(eGFRslope=summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2]) %>%
   data.frame() %>%
   `colnames<-`(c("PatID", "true.slope"))
-
-data.full <- left_join(data.full, df.tmp, by="PatID")
-tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
-df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope.mm=coef(tmp)$PatID[,1])
 data.full <- left_join(data.full, df.tmp, by="PatID")
 data.full$true.prob <- (data.full$true.slope <= slope_cutpoint)*1
 
-#tmp <- lmer(FU_eGFR_epi ~ (1+Time_cont|PatID), data=data.diacore, REML=F, control=lmerControl(optimizer="bobyqa"))
-#df.tmp <- data.frame(PatID=rownames(coef(tmp)$PatID), true.slope=coef(tmp)$PatID[,1])
+# Validation cohort
 df.tmp <- data.diacore %>%
   group_by(PatID) %>%
   summarise(eGFRslope=summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2]) %>%

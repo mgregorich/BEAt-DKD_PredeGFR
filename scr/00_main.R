@@ -1,17 +1,14 @@
-###################################################
+#===============================================================================#
 # Author: Mariella Gregorich
 # Date: 30/06/2021
 # Info: Linear mixed effects model for the prediction of eGFR (BEAt-DKD)
-###################################################
+#===============================================================================#
 
-#rm(list=ls())
-set.seed(12345)
-# Initialise global values
-
+rm(list=ls())
 source("scr/setup.R")
 
+# =========== Start the fun ======================
 
-# ------- Start the fun
 # Data preparation
 source("scr/01_dataprep.R", print.eval=F)
 
