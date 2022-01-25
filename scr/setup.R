@@ -8,7 +8,7 @@ pacman::p_load(tidyr, plyr, reshape2, ggplot2, openxlsx, stringr, transplantr, s
                lme4, readxl, purrr, janitor, tableone, dplyr, splitstackshape,r2glmm,
                nlme, lmerTest, MuMIn, splines, rms, Hmisc, concreg, caret, MASS, performance,
                pmsampsize, broom, broom.mixed, gridExtra, future.apply, parallel, future,
-               sjmisc, sjPlot, forcats)
+               sjmisc, sjPlot, forcats, pmsampsize)
 
 
 # ------ Initialization 
@@ -23,7 +23,7 @@ DIACORE.path = paste0(data.path, "DIACORE/")
 out.path = "../Output/"
 shiny.path = "./shiny"
 slope_cutpoint=-3
-nboot = 5
+nboot = 1000
 
 # Load auxiliary functions 
 source("scr/functions_aux.R")

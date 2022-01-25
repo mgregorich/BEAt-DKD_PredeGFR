@@ -1,13 +1,11 @@
-##################################################
+#===============================================================================#
 # Author: Mariella Gregorich
 # Date: 30/06/2021
-# Info: Model evaluation
-###################################################
+# Info: Model evaluation of the cross-validated and bias-corrected model results
+#===============================================================================#
 
 
-# --------------- Model discrimination, precision and fit ----------------------
-
-
+# =============== Table: Model discrimination, precision and fit =====================
 tbl_performance <- list()
 tbl_performance[[1]] <- df.stats %>%
   group_by(Time) %>%
@@ -45,13 +43,15 @@ write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val_full.xlsx"), overw
 
 
 
-# ----------------------------- Calibration (continuous) ------------------------------------
+# ===================== Calibration (continuous) ==============================
 
 for(t in 2:7){
   # Before update
-  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$prior.pred, time=t, save=T, out.path = out.path, cohort="dev", type="preUp")
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$prior.pred, 
+                        time=t, save=T, out.path = out.path, cohort="dev", type="preUp")
   # After update
-  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$pred, time=t, save=T, out.path = out.path, cohort="dev", type="postUp")
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$pred, 
+                        time=t, save=T, out.path = out.path, cohort="dev", type="postUp")
 }
 
 ggplot(df.preds, aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
@@ -67,7 +67,7 @@ ggsave(paste0(out.path, "fig_calibration_all_dev_post.tiff"),  width=8, height=6
 
 
 
-# -------------------- Calibration: Probability of progression ------------------------
+# ==================== Calibration: Probability of progression =================
 pred_prob = df.preds[df.preds$Time==0,]$pred.prob
 true_prob = df.preds[df.preds$Time==0,]$true.prob
 plot_calibration_bin(pred=pred_prob, true=as.factor(true_prob), out.path = out.path, save=F)
@@ -84,52 +84,34 @@ tiff(paste0(out.path, "hist_slopes.png"),
      width = 5, height = 4, units = 'in',
      compression = c( "lzw"))
 hist(df.preds$pred.slope, main = "Predicted eGFR slope")
-hist(df.preds$true.slope.mm, main = "Observed eGFR slope (MM)")
+hist(df.preds$true.slope, main = "Observed eGFR slope (LM)")
 dev.off()
 
-ggplot(df.preds, aes(x=pred.slope, y=true.slope.mm)) +
+ggplot(df.preds, aes(x=pred.slope, y=true.slope)) +
   geom_point() +
   geom_abline(intercept = 0, col="red") + 
   scale_x_continuous("Predicted eGFR slope ") +
-  scale_y_continuous("Observed eGFR slope (MM)") +
-  theme_bw() +
-  theme(text=element_text(size=16))
-ggsave(paste0(out.path, "fig_prob_progression_full.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
-
-ggplot(df.preds, aes(x=true.slope.mm, y=true.slope)) +
-  geom_point() +
-  geom_abline(intercept = 0, col="red") + 
-  scale_x_continuous("Observed eGFR slope (MM)") +
   scale_y_continuous("Observed eGFR slope (LM)") +
   theme_bw() +
   theme(text=element_text(size=16))
-ggsave(paste0(out.path, "fig_prob_progression_mm.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
-
-ggplot(df.preds[df.preds$true.slope.mm < 4 & df.preds$true.slope.mm >-4 ,], aes(x=pred.slope, y=true.slope.mm)) +
-  geom_point() +
-  geom_abline(intercept = 0, col="red") + 
-  scale_x_continuous("Predicted eGFR slope ") +
-  scale_y_continuous("Observed eGFR slope (MM)") +
-  ggtitle("Only slopes in between -4 and 4") +
-  theme_bw() +
-  theme(text=element_text(size=16))
-ggsave(paste0(out.path, "fig_prob_progression_red.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(paste0(out.path, "fig_prob_progression_full.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 # Pick individual with largest deviation of treu and predicted
 df.preds[which.max(df.preds$true.slope - df.preds$pred.slope),]$PatID
 
-# ---------------------------- Model fit ---------------------------------------
 
-# ----- Plot subject-specific trajectories
+# ==========================  Estimated eGFR slopes  ===============
+
+# ----- Plot individual-specific trajectories
 which.max(abs(coef(fit.final)$PatID[,"Time"]))
 
 set.seed(666)
-df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.lo", "pred.up", "true.slope", "true.slope.mm","pred.slope")], id.vars = c("PatID","Time", "pred.lo", "pred.up", "true.slope", "true.slope.mm", "pred.slope"))
+df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.lo", "pred.up", "true.slope", "pred.slope")], id.vars = c("PatID","Time", "pred.lo", "pred.up", "true.slope", "pred.slope"))
 df.melt.small <- df.melt[df.melt$PatID %in% c(sample(unique(df.melt$PatID),16)),]
 df.melt.small$Time <- as.numeric(df.melt.small$Time)
 graphLabels <- df.melt.small[!duplicated(df.melt.small$PatID),]
-graphLabels$label1 = paste0("Obs.(LM): ", round(graphLabels$true.slope,2), "\nObs.(MM): ", round(graphLabels$true.slope.mm,2), "\nPred: ", round(graphLabels$pred.slope,2))
+graphLabels$label1 = paste0("Obs.(LM): ", round(graphLabels$true.slope,2), "\nPred: ", round(graphLabels$pred.slope,2))
 
 ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   geom_ribbon(aes(x=Time, ymax=pred.up, ymin=pred.lo), fill="blue", alpha=.05) +
@@ -162,7 +144,7 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
 
 
 
-# ---- subject specific trajectories, comparing updated and no-update predictions
+# ---- Individual specific trajectories, comparing updated and no-update predictions
 df.melt_0 <- melt(df.preds[df.preds$Time==0,c("PatID", "Time", "pred")], id.vars = c("PatID","Time"))
 df.melt.small_0 <- df.melt_0[df.melt_0$PatID %in% unique(df.melt.small$PatID), ]
 df.melt.small_0$variable = "pred_0"
@@ -182,6 +164,7 @@ ggplot(data =df.melt.small_0, aes(x = Time, y = value,  col=variable)) +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
 ggsave(paste0(out.path, "fig_indvPred_eGFR_dev_noUpdate.png"),width=10, height=6)
+
 
 # ---- Mean country trajectories
 df.preds %>%
@@ -205,8 +188,8 @@ ggsave(paste0(out.path, "fig_longiObs_eGFR.png"),width=12, height=6)
 
 
 # Longitudinal trajectory of predicted eGFR per cohort
+data.diacore$Cohort <- as.factor(data.diacore$Cohort)
 df.tmp <- data.frame(rbind(df.preds[,c("Time_cat", "FU_eGFR_epi", "Cohort")], data.diacore[,c("Time_cat", "FU_eGFR_epi", "Cohort")]))
-df.tmp$Cohort <- as.factor(df.tmp$Cohort)
 df.tmp$Time_cat <- as.factor(df.tmp$Time_cat)
 df.tmp <- df.tmp[!is.na(df.tmp$Time_cat),]
 ggplot(df.tmp,aes(x = Time_cat, y = FU_eGFR_epi, fill=Cohort))  +
@@ -223,8 +206,8 @@ ggsave(paste0(out.path, "fig_longiobs_eGFR_cohort.png"),width=10, height=6)
 
 # ---- Longitudinal trajectory of predicted eGFR per country
 ggplot(df.preds,aes(x = Time, y = pred, fill=Country))  +
-  geom_boxplot(aes(x=Time, fill=Country), outlier.shape = NA) +
-  stat_boxplot(aes(fill=Country),geom ='errorbar') +
+  geom_boxplot(aes(x=Time), outlier.shape = NA) +
+  stat_boxplot(geom ='errorbar') +
   scale_y_continuous("Predicted eGFR") +
   theme_bw() +
   theme(text = element_text(size=16))
@@ -233,8 +216,8 @@ ggsave(paste0(out.path, "fig_longipred_eGFR.png"),width=12, height=6)
 # ---- Longitudinal trajectory of predicted eGFR per cohort
 df.preds$Cohort <- as.factor(df.preds$Cohort)
 ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
-  geom_boxplot(aes(x=Time, fill=Cohort), outlier.shape = NA) +
-  stat_boxplot(aes(fill=Cohort),geom ='errorbar') +
+  geom_boxplot(aes(x=Time), outlier.shape = NA) +
+  stat_boxplot(geom ='errorbar') +
   scale_y_continuous("Predicted eGFR") +
   scale_fill_manual(values=c("orange1", "royalblue1"), labels=c("GCKD", "PROVALID")) +
   theme_bw() +
@@ -242,8 +225,9 @@ ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
 ggsave(paste0(out.path, "fig_longipred_eGFR_cohort_dev.png"),width=10, height=6)
 
 
-# --- Forest plot of standardized coefficients -----
-data.scaled <- data.full %>%mutate_if(is.numeric,scale)
+# ===================== Forest plot of standardized coefficients ===============
+data.scaled <- data.full %>%mutate_at(vars(Time, BL_age, BL_bmi, BL_map, BL_hba1c, 
+                                           BL_serumchol, BL_hemo, BL_uacr_log2, FU_eGFR_epi), scale)
 fit.scaled <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
                                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
                    data=data.scaled, REML=F, control=lmerControl(optimizer="bobyqa"))
@@ -267,15 +251,15 @@ ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lowe
   geom_point(size=2, shape=1) + 
   geom_errorbarh(height=.25) +
   scale_y_discrete("") +
-  scale_x_continuous("Standardized Effect", limits=c(-0.4, 0.4)) +
+  scale_x_continuous("Standardized Effect") +
   geom_vline(xintercept=0, linetype="dashed", color = "red") +
-  facet_wrap(~Group) +
+  facet_wrap(~Group, scales="free_x") +
   theme_bw() +
   theme(text = element_text(size = 12))
 ggsave(paste0(out.path, "plot_forest_standardized.tiff"),  width=8, height=4, device='tiff', dpi=350, compression = 'lzw')
 
 
-# Table of model coefficients
+# ================= Table: Model coefficients ================================
 df[,2:4] <- apply(df[,2:4],2, round, digits=3)
 df$name <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hba1c","Serum chol.",
                                       "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
@@ -284,7 +268,7 @@ tbl_fixeff <- cbind(df[!str_detect(df$variable, "Time"),c(5,2,6)], df[str_detect
 write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"), overwrite = TRUE)
 
 
-# ---- Individual risk predictions
+# ====================== Individual risk predictions ==========================
 df.preds.t0 <- df.preds[df.preds$Time==0,]
 
 ggplot(df.preds.t0, aes(x=pred.prob, fill=Cohort)) +
@@ -302,7 +286,7 @@ summary(df.preds.t0[df.preds.t0$Cohort==1,]$pred.prob)
 
 
 
-# ---------- Partial explained variance of individual predictors ---------
+# ================= Partial explained variance of individual predictors ========
 
 # # (1) With partR2 function
 # #remotes::install_github("mastoffel/partR2") 
@@ -406,27 +390,23 @@ names(tmp1) <- names(tmp2) <- c("term", "est", "ci.lo", "ci.up", "type")
 
 tbl_partR2 <- data.frame(rbind(tmp1, tmp2))
 tbl_partR2[,2:4] <- apply(tbl_partR2[,2:4], 2, as.numeric)
+dummy <- data.frame(type = c("marginal", "conditional"), 
+                    val = c(tbl_partR2[tbl_partR2$term %in% "Full Model",]$est[1], 
+                            tbl_partR2[tbl_partR2$term %in% "Full Model",]$est[2]),
+                    cols=c("skyblue4", "skyblue2"))
 
 ggplot(tbl_partR2, aes(x=est, y=term, col=type)) +
   geom_point() +
   geom_line() +
   geom_errorbarh(aes(xmin = ci.lo, xmax=  ci.up), height=0.25) +
+  geom_vline(data=dummy, aes(xintercept=val, colour=cols), size=0.2, linetype="dashed") +
   scale_y_discrete("",limits=rev) +
-  scale_x_continuous("Partial R2 and 95% CI", limits = c(0,1), breaks = seq(0,1,0.2)) +
-  scale_color_manual("", values=c("skyblue1", "skyblue4")) +
+  scale_x_continuous("Partial R2 and 95% CI") +
+  scale_color_manual("", values=c("skyblue2", "skyblue4","skyblue2", "skyblue4")) +
   theme_bw() +
-  theme(text=element_text(size=16), legend.position = "top",
-        axis.text.y = element_text(face = c('plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain','bold')))
+  theme(text=element_text(size=16), legend.position = "None",
+        axis.text.y = element_text(face = c('plain', 'plain', 'plain', 'plain', 'plain', 'plain', 
+                                            'plain', 'plain', 'plain', 'plain', 'plain', 'plain','bold'))) +
+  facet_wrap(~type, scales="free_x")
 ggsave(paste0(out.path, "fig_partialR2_bold.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
-ggplot(tbl_partR2, aes(x=est, y=term, col=type)) +
-  geom_point() +
-  geom_line() +
-  geom_errorbarh(aes(xmin = ci.lo, xmax=  ci.up), height=0.25) +
-  scale_y_discrete("",limits=rev) +
-  scale_x_continuous("Partial R2 and 95% CI", limits = c(0,1), breaks = seq(0,1,0.2)) +
-  scale_color_manual("", values=c("skyblue1", "skyblue4")) +
-  theme_bw() +
-  theme(text=element_text(size=16), legend.position = "top",
-        axis.text.y = element_text(face = c('plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain','bold')))
-ggsave(paste0(out.path, "fig_partialR2.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
