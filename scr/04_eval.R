@@ -225,6 +225,33 @@ ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
 ggsave(paste0(out.path, "fig_longipred_eGFR_cohort_dev.png"),width=10, height=6)
 
 
+# ================= Table: Model coefficients ================================
+df <- data.frame(variable=rownames(summary(fit.final)$coefficients),
+                 effect=summary(fit.final)$coefficients[,1],
+                 lower=summary(fit.final)$coefficients[,1] - 1.96*summary(fit.final)$coefficients[,2],
+                 upper=summary(fit.final)$coefficients[,1] + 1.96* summary(fit.final)$coefficients[,2]) 
+df$variable <- factor(df$variable, levels = df$variable[length(df$variable):1])
+df$Group <- ifelse(str_detect(df$variable, "Time:"), "Effect on eGFR slope", "Effect on eGFR value")
+df <- mutate(df, Group = fct_rev(Group)) 
+df$variable <- as.factor(str_replace(df$variable, "Time:", ""))
+df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_sex1","BL_bmi","BL_smoking1","BL_map","BL_hba1c","BL_serumchol", "BL_hemo",
+                                            "BL_uacr_log2", "BL_med_dm1","BL_med_bp1","BL_med_lipid1"))
+levels(df$variable) <- list("Intercept"="(Intercept)","Time"="Time", Age  = "BL_age", "Sex (female)" = "BL_sex1", BMI="BL_bmi", "Smoking (ever)"="BL_smoking1", MAP="BL_map", Hba1C="BL_hba1c",
+                            "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", "Glucose-low. Med."="BL_med_dm1", "Blood pressure-low. Med."="BL_med_bp1", "Lipid-low. Med."="BL_med_lipid1")
+
+
+df[,2:4] <- apply(df[,2:4],2, round, digits=3)
+df$name <- rownames(df)
+df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hba1c","Serum chol.",
+                                          "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
+df$CI <- paste0("(",df$lower,", " ,df$upper,")")
+tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$name, "Time"),c(2,8)])
+colnames(tbl_fixeff) <- c("Variable", "Effect.Baseline", "95% CI", "Effect.Slope", "95% CI")
+write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"), overwrite = TRUE)
+
+
+
+
 # ===================== Forest plot of standardized coefficients ===============
 data.scaled <- data.full %>%mutate_at(vars(Time, BL_age, BL_bmi, BL_map, BL_hba1c, 
                                            BL_serumchol, BL_hemo, BL_uacr_log2, FU_eGFR_epi), scale)
@@ -257,15 +284,6 @@ ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lowe
   theme_bw() +
   theme(text = element_text(size = 12))
 ggsave(paste0(out.path, "plot_forest_standardized.tiff"),  width=8, height=4, device='tiff', dpi=350, compression = 'lzw')
-
-
-# ================= Table: Model coefficients ================================
-df[,2:4] <- apply(df[,2:4],2, round, digits=3)
-df$name <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hba1c","Serum chol.",
-                                      "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
-df$CI <- paste0("(",df$lower,", " ,df$upper,")")
-tbl_fixeff <- cbind(df[!str_detect(df$variable, "Time"),c(5,2,6)], df[str_detect(df$variable, "Time"),c(2,6)])
-write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"), overwrite = TRUE)
 
 
 # ====================== Individual risk predictions ==========================

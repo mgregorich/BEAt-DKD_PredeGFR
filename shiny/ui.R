@@ -8,17 +8,16 @@
 
 # -------------------- SHINY User Interface  ---------------------------
 
-
-navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
+navbarPage("BEAt-DKD", theme = shinythemes::shinytheme("spacelab"),
            tabPanel(title="Home",
                     
                     fluidPage(
                       h1(id="big-heading" ,"Web implementation of the prediction model for renal decline in individuals with type 2 diabetes mellitus"),
                       
                       h4(id="text1", "Renal decline is a prevalent issue in patients with type 2 diabetes mellitus. Early on detection through the use of diagnostic 
-                         tools such as risk prediction calculators allow to identify subjects with an increased risk for kidney decline over the course 
+                         tools facilitating continuous monitoring which allow to identify subjects with an increased risk for kidney decline over the course 
                          of the next years."),
-                      h4(id="text1", "The risk calculator is developed for people with diabetes mellitus type 2, in between 18 to 75 years and an eGFR above 30mL/min/1.73m2."),
+                      h4(id="text1", "The prediction model has been developed for people with diabetes mellitus type 2, in between 18 to 75 years and an eGFR above 30mL/min/1.73m2."),
                       h4(id="text1", "Users are urged to read the disclaimer carefully."),
                       
                       h4(id="text4","Disclaimer:"),
@@ -89,7 +88,7 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                       h1(id="big-heading" ,"Web implementation of the prediction model for renal decline in individuals with type 2 diabetes mellitus"),
                       # Sidebar layout with input and output definitions ----
                       
-                      fluidRow(useShinyjs(),
+                      fluidRow(shinyjs::useShinyjs(),
                                tags$head(
                                  tags$style(type="text/css", 
                                  ".form-control.shiny-bound-input, 
@@ -108,18 +107,18 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                         column(6,id="basic1", 
                                                h4(id="text2","Demographics:"),
                                                # Input: Slider for the number of bins ----
-                                               h5(prettyRadioButtons("BL_sex", "Sex:",
+                                               h5(shinyWidgets::prettyRadioButtons("BL_sex", "Sex:",
                                                                      c("female"=1, "male"=0), inline=T, shape = "square")),
-                                               h5(numericInputIcon("BL_age", "Age, years:", value=65, min=18, max=75)),
-                                               h5(numericInputIcon("BL_bmi", "BMI (kg/m2):", value=25, min=11, max=40)),
-                                               h5(prettyRadioButtons("BL_smoking", "Smoking status:",
+                                               h5(shinyWidgets::numericInputIcon("BL_age", "Age, years:", value=65, min=18, max=75)),
+                                               h5(shinyWidgets::numericInputIcon("BL_bmi", "BMI (kg/m2):", value=25, min=11, max=40)),
+                                               h5(shinyWidgets::prettyRadioButtons("BL_smoking", "Smoking status:",
                                                                      choices = c("never"=0, "ever"=1),inline=T,shape = "square")),
                                                
                                                h4(" ------------------------------------ "),
                                                h4(id="text2","Medication intake:"),
-                                               prettyCheckbox("BL_med_bp", "Blood pressure-lowering"),
-                                               prettyCheckbox("BL_med_lipid", "Lipid-lowering"),
-                                               prettyCheckbox("BL_med_dm", "Glucose-lowering")),
+                                               shinyWidgets::prettyCheckbox("BL_med_bp", "Blood pressure-lowering"),
+                                               shinyWidgets::prettyCheckbox("BL_med_lipid", "Lipid-lowering"),
+                                               shinyWidgets::prettyCheckbox("BL_med_dm", "Glucose-lowering")),
                                         column(6,id="basic1", shinyjs::hidden(
                                                  fluidRow(id="lab1",
                                                           h4(id="text2", "Laboratory:"),
@@ -139,7 +138,7 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                       ),
                                # Main panel for displaying outputs ----
                                column(8,
-                                      h4(id="text2", "Outcome Prediction"),
+                                      h4(id="text0", "Results of the prediction model"),
                                       
                                       # Output: Histogram ----
                                       tabsetPanel(

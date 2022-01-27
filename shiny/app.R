@@ -4,8 +4,7 @@
 # Info: app file - shiny
 ################################
 
-# Create Shiny app ----
-pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png)
-source("functions_shiny.R")
 
+# Create Shiny app ----
 shinyApp(ui = ui, server = server)
+

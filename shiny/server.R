@@ -6,8 +6,8 @@
 
 
 # ---------------------------- SHINY Server --------------------------
-pred_model <- readRDS("predmodel_shinyObject.rds")
-
+source("www/functions_shiny.R",local=TRUE)
+pred_model <- readRDS("www/predmodel_shinyObject.rds")
 
 shinyServer(function(input, output, session) {
   
@@ -55,7 +55,7 @@ shinyServer(function(input, output, session) {
                              times = seq(1,5,1))
     data.long <- data.new[rep(1,6),]
     data.long$Time <- seq(0,5,1)
-    data.pred <- full_join(data.long,
+    data.pred <- dplyr::full_join(data.long,
                            res[,c("PatID", "Time","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")],
                            by=c("PatID", "Time"))
     #data.pred[data.pred$Time==0,]$pred <- input$BL_eGFR
