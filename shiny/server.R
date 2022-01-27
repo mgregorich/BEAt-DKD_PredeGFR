@@ -5,15 +5,6 @@
 ################################
 
 
-
-# data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=55,
-#                        BL_age=69, BL_sex=1, BL_bmi=24, BL_smoking=1,BL_hemo=14, BL_hba1c=62,BL_serumchol=130, BL_map=calc_map(sys=125,dia=85),
-#                        BL_uacr_log2=log(10,2),BL_med_dm=1, BL_med_bp=1, BL_med_lipid=1)
-
-
-pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png)
-source("functions_shiny.R")
-
 # ---------------------------- SHINY Server --------------------------
 pred_model <- readRDS("predmodel_shinyObject.rds")
 
@@ -124,7 +115,7 @@ shinyServer(function(input, output, session) {
   })
   
   text_longitudinal <- eventReactive(input$goButton, {  
-    paste("The figure below illustrates the estimated longitudinal trajectory of the patient's eGFR measurements given the their information.", sep="" )
+    paste("The figure below illustrates the exptected sequential trajectory of the patient's future eGFR measurements given the provided information.", sep="" )
   })
   
   plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"pred.prob"]*100,2))})
@@ -193,7 +184,7 @@ shinyServer(function(input, output, session) {
   
   # Reset
   observeEvent(input$reset_input, {
-    updateNumericInput(session, "BL_age", value = 67)
+    updateNumericInput(session, "BL_age", value = 65)
     updateRadioButtons(session, "BL_sex", selected = "female")
     updateNumericInput(session, "BL_bmi", value=25)
     updateRadioButtons(session, "BL_smoking", selected = "never")

@@ -4,8 +4,7 @@
 # Info: user interface file - shiny
 ################################
 
-pacman::p_load(shiny, shinyjs, shinythemes, lme4, ggplot2, reshape2, dplyr, tidyverse, png, shinyWidgets)
-source("functions_shiny.R")
+
 
 # -------------------- SHINY User Interface  ---------------------------
 
@@ -48,7 +47,14 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                padding-right: 2.5%;
                                padding-left:2.5%
                                }"),
-                          HTML("#text2{color: black;
+                          HTML("#text2{color: #1476CB;
+                               font-weight: bold;
+                               font-size: 18px;
+                               line-height: 1.5em;
+                               margin-top: 5px;
+                               white-space: pre-wrap;
+                               }"),
+                          HTML("#text0{color: #1165AE;
                                font-weight: bold;
                                font-size: 18px;
                                line-height: 1.5em;
@@ -71,16 +77,16 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                margin-top: 5px;
                                }"),
                           HTML("#basic1 {
-                            border: 2px double white;
+                            border: 2px double #E5F1FC;
                             background-color: #E5F1FC;}"),
                           HTML("#lab1 {
-                            border: 2px double white;
+                            border: 2px double #E5F1FC;
                             background-color: #E5F1FC;}")
                         )
                       ), 
                       
                       # App title ----
-                      h1(id="big-heading" ,"Risk prediction calculator for renal decline in individuals with type 2 diabetes mellitus"),
+                      h1(id="big-heading" ,"Web implementation of the prediction model for renal decline in individuals with type 2 diabetes mellitus"),
                       # Sidebar layout with input and output definitions ----
                       
                       fluidRow(useShinyjs(),
@@ -90,43 +96,47 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                  .selectize-input {height: 25px; margin-bottom:2 px; margin-top: 2px;}
                                  .checkbox-inline, .radio-inline {margin-bottom: 2px; margin-top: 2px;}")
                                ),
-                               column(2,id="basic1", style='padding:20px;',
-                                      # Sidebar panel for inputs ----
-                                      h5(radioButtons("add_pred", "Model:  ", 
-                                                   choices = c("Simple" = 1, 
-                                                               "Extended" = 2),
-                                                   selected = 1, inline = T)),
-                                      h4(" -------------------------------- "),
-                                      h4(id="text2","Demographics:"),
-                                      # Input: Slider for the number of bins ----
-                                      h5(prettyRadioButtons("BL_sex", "Sex:",
-                                                   c("female"=1, "male"=0), inline=T, shape = "square")),
-                                      h5(numericInputIcon("BL_age", "Age, years:", value=65, min=18, max=75)),
-                                      h5(numericInputIcon("BL_bmi", "BMI (kg/m2):", value=22, min=11, max=40)),
-                                      h5(prettyRadioButtons("BL_smoking", "Smoking status:",
-                                                   choices = c("never"=0, "ever"=1),inline=T,shape = "square")),
-
-                                      h4(" -------------------------------- "),
-                                      h4(id="text2","Medication intake:"),
-                                      prettyCheckbox("BL_med_bp", "Blood pressure-lowering"),
-                                      prettyCheckbox("BL_med_lipid", "Lipid-lowering"),
-                                      prettyCheckbox("BL_med_dm", "Glucose-lowering"),
-                                      h4(" -------------------------------- "),
-                                      h5(numericInput("BL_eGFR", "Baseline eGFR = ",value=50, min=30, max=145, width="50%"))
+                               column(4,id="basic1",
+                                      fluidRow(
+                                               column(4,h4(id="text0","Choose Model: ")),
+                                               column(5,h4(radioButtons("add_pred", "", 
+                                                                     choices = c("Simple" = 1, 
+                                                                                 "Extended" = 2),
+                                                                     selected = 1, inline = T)))),
+                                      h4(" ------------------------------------------------------------------------------------------------------ "),
+                                      fluidRow(
+                                        column(6,id="basic1", 
+                                               h4(id="text2","Demographics:"),
+                                               # Input: Slider for the number of bins ----
+                                               h5(prettyRadioButtons("BL_sex", "Sex:",
+                                                                     c("female"=1, "male"=0), inline=T, shape = "square")),
+                                               h5(numericInputIcon("BL_age", "Age, years:", value=65, min=18, max=75)),
+                                               h5(numericInputIcon("BL_bmi", "BMI (kg/m2):", value=25, min=11, max=40)),
+                                               h5(prettyRadioButtons("BL_smoking", "Smoking status:",
+                                                                     choices = c("never"=0, "ever"=1),inline=T,shape = "square")),
+                                               
+                                               h4(" ------------------------------------ "),
+                                               h4(id="text2","Medication intake:"),
+                                               prettyCheckbox("BL_med_bp", "Blood pressure-lowering"),
+                                               prettyCheckbox("BL_med_lipid", "Lipid-lowering"),
+                                               prettyCheckbox("BL_med_dm", "Glucose-lowering")),
+                                        column(6,id="basic1", shinyjs::hidden(
+                                                 fluidRow(id="lab1",
+                                                          h4(id="text2", "Laboratory:"),
+                                                          h5(div(style="margin:5px;",numericInput("BL_hemo", "Hemoglobin (g/dL):",value=15, min=10, max=18))), 
+                                                          h5(div(style="margin:5px;",numericInput("BL_diabp", "Diastolic blood pressure:",value=85, min=50, max=105))),
+                                                          h5(div(style="margin:5px;",numericInput("BL_sysbp", "Systolic blood pressure:", value=125, min=100, max=190))),
+                                                          h5(div(style="margin:5px;",numericInput("BL_hba1c", "Hba1C (mmol/mol):", value=62, min=33.3, max=93))),
+                                                          h5(div(style="margin:5px;",numericInput("BL_serumchol", "Serum Cholesterol (mg/dL)", value=130, min=99, max=328))),
+                                                          h5(div(style="margin:5px;",numericInput("BL_uacr", "Urinary albumin-creatinine ratio (mg/g):", value=10, min=0.05, max=2549)))
+                                                 )))),
+                                      h4(" ----------------------------------------------------------------------------------------------------- "),
+                                      fluidRow(align="center",
+                                        column(5,h5(div(style="color: #1165AE;margin-top:-15px;width=400px", numericInput("BL_eGFR", "Baseline eGFR",value=70, min=30, max=145, width="50%")))),
+                                        column(6,h5(div(style="color: #1165AE;margin-top:-15px;width=400px", numericInput("cutpoint", "Cutpoint for stable and fast progression", value=-3, min=-5, max=0)))),
+                                        
+                                      )
                                       ),
-                               column(2,
-                                      shinyjs::hidden(
-                                        fluidRow(id="lab1",
-                                                 h4(id="text2", "Laboratory:"),
-                                                 h5(div(style="margin:5px;",numericInput("BL_hemo", "Hemoglobin (g/dL):",value=15, min=10, max=18))), 
-                                                 h5(div(style="margin:5px;",numericInput("BL_diabp", "Diastolic blood pressure:",value=85, min=50, max=105))),
-                                                 h5(div(style="margin:5px;",numericInput("BL_sysbp", "Systolic blood pressure:", value=85, min=100, max=190))),
-                                                 h5(div(style="margin:5px;",numericInput("BL_hba1c", "Hba1C (mmol/mol):", value=61.7, min=33.3, max=93))),
-                                                 h5(div(style="margin:5px;",numericInput("BL_serumchol", "Serum Cholesterol (mg/dL)", value=131, min=99, max=328))),
-                                                 h5(div(style="margin:5px;",numericInput("BL_uacr", "Urinary albumin-creatinine ratio (mg/g):", value=10, min=0.05, max=2549)))
-                                                 )
-                                      )),
-                               
                                # Main panel for displaying outputs ----
                                column(8,
                                       h4(id="text2", "Outcome Prediction"),

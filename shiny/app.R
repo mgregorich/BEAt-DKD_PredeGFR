@@ -5,4 +5,7 @@
 ################################
 
 # Create Shiny app ----
+pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png)
+source("functions_shiny.R")
+
 shinyApp(ui = ui, server = server)
