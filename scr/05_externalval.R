@@ -19,7 +19,7 @@ risk_model <- readRDS(file.path(out.path, "riskpred_model.rds"))
 data.diacore$Time <- data.diacore$Time_cont
 data.diacore.t0 <- data.frame(data.diacore[data.diacore$Time_cat==0,])
 data.diacore.t0$Country <- "Unknown"
-res <- LongPred_ByBase_lmer(lmerObject=risk_model, 
+res <- update_PredByBase(lmerObject=risk_model, 
                             newdata = data.diacore.t0, 
                             cutpoint = slope_cutpoint,
                             timeVar = "Time", idVar="PatID", idVar2="Country",

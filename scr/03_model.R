@@ -26,7 +26,7 @@ fit.final <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_sm
 # UPDATE prediction with BL value
 data.full.t0 <- data.full[data.full$Time==0,]
 data.full.t0$Country <- "Unknown"
-res <- LongPred_ByBase_lmer(lmerObject=fit.final, newdata = data.full.t0, timeVar = "Time", idVar="PatID", idVar2="Country",
+res <- update_PredByBase(lmerObject=fit.final, newdata = data.full.t0, timeVar = "Time", idVar="PatID", idVar2="Country",
                        times = unique(data.full$Time_cat)[-1], all_times=F)
 data.full$Time <- round(data.full$Time,0)
 data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
@@ -34,9 +34,11 @@ data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pre
 
 # ================== Internal validation  ======================
 
-# ---- (1) Save final model ----
-saveRDS(fit.final, paste0(out.path,"riskpred_model.rds"))
-saveRDS(fit.final, paste0(shiny.path,"/riskpred_model.rds"))
+# ---- (1) Save final model and extract components for shiny ----
+saveRDS(fit.final, paste0(out.path,"predmodel_lmerObject.rds"))
+
+pred_components <- extractLMER(fit.final, idVar = "PatID")
+saveRDS(pred_components, paste0(shiny.path,"/predmodel_shinyObject.rds"))
 
 
 # ---- (2) Model parameter ----

@@ -126,6 +126,30 @@ eval_preds <- function(pred, obs, lmerObject){
   return(res)
 }
 
+extractLMER <- function(lmerObject, idVar){
+  
+  #Formula
+  formYx <- nobars(formula(lmerObject))
+  
+  # covariance matrix of random effect
+  V.re <- VarCorr(lmerObject, )[[idVar]]
+  
+  # random effect correlation matrix
+  C.re <- attr(V.re, "correlation")
+  
+  # estimated standard deviation of the errors
+  sigma <- lmerObject@sigma   
+  
+  # fixed effects covariance matrix
+  V.fe <- as.matrix(vcov(lmerObject))
+  
+  # fixed effects coefficients
+  betas <- fixef(lmerObject)
+  
+  out <- list("form"=formYx,"VarRE"=V.re, "CorrRE"=C.re, "VarFE"=V.fe, "betas"=betas, "sigma"=sigma)
+  return(out)
+}
+
 draw_bootstrap_sample <- function(data.tmp){
   pats.boot <- data.tmp %>%
     filter(Time==0) %>%
@@ -157,7 +181,7 @@ intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
     # Update prediction with BL value
     data.test.t0 <- data.test[data.test$Time==0,]
     data.test.t0$Country <- "Unknown"
-    res <- LongPred_ByBase_lmer(lmerObject=fit.lmer, 
+    res <- update_PredByBase(lmerObject=fit.lmer, 
                                 newdata = data.test.t0, 
                                 cutpoint = slope_cutpoint,
                                 timeVar = "Time", idVar="PatID", idVar2="Country",
@@ -255,13 +279,13 @@ plot_fun <- function( x, y, time=0 ){
 
 
 
-#' @title LongPred_ByBase for lme4 model objects
+#' @title update_PredByBase for lme4 model objects
 #' 
 #' @details 
 #' Ported from implementation in `JMBayes::indvPred_lme`. 
 
-LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,  times,
-                                 level = 0.95, cutpoint=-3, all_times, interval="prediction", M=500, seed=123) 
+update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL, times,
+                                 level = 0.95, cutpoint=-3, all_times) 
 {
   # Specify to try the function
   # lmerObject = fit.final
@@ -273,9 +297,6 @@ LongPred_ByBase_lmer <- function (lmerObject, newdata, timeVar, idVar, idVar2=NU
   # all_times = F
   # level = 0.95
   # cutpoint=-3
-  # interval="prediction"
-  # M=100
-  # seed=123
 
   
   # ---- Assign elements of lmer to objects

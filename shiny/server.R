@@ -12,70 +12,11 @@
 
 
 pacman::p_load(shiny, shinyjs, shinythemes, nlme, ggplot2, reshape2, dplyr, tidyverse, png)
-source("functions_aux.R")
+source("functions_shiny.R")
 
 # ---------------------------- SHINY Server --------------------------
-risk_model <- readRDS("riskpred_model.rds")
+pred_model <- readRDS("predmodel_shinyObject.rds")
 
-
-plot_trajectory <- function(x){
-  #df.melt <- melt(x[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.low", "pred.upp")], id.vars = c("PatID","Time", "pred.low", "pred.upp"))
-
-  p1 <- ggplot(x, aes(x=Time, y=pred)) +
-    geom_point(size=3, shape=8) +
-    geom_line() +
-    scale_x_continuous("Time", limits = c(0,7), breaks = seq(0,7,1)) +
-    scale_y_continuous("Predicted eGFR") +
-    theme_bw() +
-    theme(text = element_text(size=16))
-  
-  return(p1)
-}
-
-calc_map <- function(sys, dia){
-  map <- (sys+ 2*dia)/3
-  return(map)
-}
-
-
-
-
-smilegraph <- function(risk){
-  happy<-readPNG("happy.png")
-  sad<-readPNG("sad.png")
-  plot(0:10,0:10,ty="n", xlab="", ylab="")
-  
-  num<-round(risk)
-  
-  if(num==0){
-    for(i in 1:10){
-      for(j in 1:10) rasterImage(happy,j-1,i-1, j,i)  
-    }
-    
-  }else{
-    numy<-ceiling(num/10)
-    lastnum <- (num/10 - floor(num/10))*10
-    lastnum[lastnum==0]<-10
-    if(numy>1){ numx <- c(rep(10, numy-1),lastnum)}else{
-      numx <- lastnum
-    }
-    apply(as.matrix(1:numy),1, function(i) {
-      apply(as.matrix(1:numx[i]),1, function(j) rasterImage(sad,j-1,i-1,j,i))  
-    })
-    
-    numsad<-round(100-risk)
-    numsady<-ceiling(numsad/10)
-    lastnumsad <- (numsad/10 - floor(numsad/10))*10
-    lastnumsad[lastnumsad==0]<-10
-    if(numsady>1){ numsadx <- c(rep(10, numsady-1),lastnumsad)}else{
-      numsadx <- lastnumsad
-    }
-    apply(as.matrix(10:(11-numsady)),1, function(i){
-      index<- 11-i
-      apply(as.matrix(1:numsadx[index]),1,function(j) rasterImage(happy,10-j+1,i-1, 10-j,i) ) 
-    })
-  }
-}
 
 shinyServer(function(input, output, session) {
   
@@ -108,7 +49,6 @@ shinyServer(function(input, output, session) {
                              BL_med_dm=input$BL_med_dm*1, BL_med_bp=input$BL_med_bp*1, BL_med_lipid=input$BL_med_lipid*1)
     }
     
-    
     data.new
   })
   
@@ -116,39 +56,37 @@ shinyServer(function(input, output, session) {
   calc_out <- eventReactive(input$goButton,{
     
     data.new=inputdata()
-    slope.cutpoint <- input$cutpoint
+    slope_cutpoint <- input$cutpoint
     
-    res <- LongPred_ByBase_lmer(risk_model, newdata = data.new,  
-                           cutpoint = slope.cutpoint,
-                           timeVar = "Time", idVar="PatID", idVar2="Country",
-                           times = seq(1,7,1), 
-                           all_times=T)
-    data.long <- data.new[rep(1,8),]
-    data.long$Time <- seq(0,7,1)
+    res <- update_PredByBase(pred_model, 
+                             newdata = data.new,  
+                             cutpoint = slope_cutpoint,
+                             times = seq(1,5,1))
+    data.long <- data.new[rep(1,6),]
+    data.long$Time <- seq(0,5,1)
     data.pred <- full_join(data.long,
-                           res$Pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")],
+                           res[,c("PatID", "Time","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")],
                            by=c("PatID", "Time"))
-    data.pred[data.pred$Time==0,]$pred <- input$BL_eGFR
-    data.pred <- data.frame(data.pred[,c("PatID", "Time","pred", "pred.low", "pred.upp", "slope", "slope.low", "slope.upp","prob.prog")])
+    #data.pred[data.pred$Time==0,]$pred <- input$BL_eGFR
+    data.pred <- data.frame(data.pred[,c("PatID", "Time","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")])
     data.pred
-    
       })
   
   makeOutputTable <- eventReactive(input$goButton, {
     odata <- calc_out()
     odata <- data.frame(odata[,-1])
     
-    odata$pred.CI <- paste0("(",round(odata$pred.low,2),", ",round(odata$pred.upp,2), ")")
-    odata$slope.CI <- paste0("(",round(odata$slope.low,2),", ",round(odata$slope.upp,2), ")")
+    odata$pred.CI <- paste0("(",round(odata$pred.lo,2),", ",round(odata$pred.up,2), ")")
+    odata$slope.CI <- paste0("(",round(odata$pred.slope.lo,2),", ",round(odata$pred.slope.up,2), ")")
     
     pred <- data.frame("Time"=odata$Time, "Prediction"=odata$pred, "CI"=odata$pred.CI)
     pred$CI[1] <- ""
     colnames(pred) <- c("FU Time", "Prediction","95% Confidence interval")
    
-    slope <- data.frame("Slope"=odata$slope[1], "CI"=odata$slope.CI[1])
+    slope <- data.frame("Slope"=odata$pred.slope[1], "CI"=odata$slope.CI[1])
     colnames(slope) <- c("eGFR slope", "95% Confidence interval")
 
-     return(list("pred"=pred, "slope"=slope, "prob"=odata$prob.prog[1]))
+     return(list("pred"=pred, "slope"=slope, "prob"=odata$pred.prob[1]))
   })
   
   makeInputTable <- eventReactive(input$goButton, {
@@ -178,18 +116,18 @@ shinyServer(function(input, output, session) {
   text_risk1 <- eventReactive(input$goButton, {  
     paste("Based on the provided information and a slope cutpoint of ", input$cutpoint,"mL/min/1.73m2, 
           the probability of the subject to progress into the group of rapid decline in renal function is ",  
-          round(calc_out()[1,"prob.prog"]*100,2), "%.", sep="" )
+          round(calc_out()[1,"pred.prob"]*100,2), "%.", sep="" )
     })
   
   text_risk2 <- eventReactive(input$goButton, {  
-    paste("This means that in 100 people with these characteristics ",round(calc_out()[1,"prob.prog"]*100,0)," are expected to exhibit fast progression of renal decline in the following years.", sep="" )
+    paste("This means that in 100 people with these characteristics ",round(calc_out()[1,"pred.prob"]*100,0)," are expected to exhibit fast progression of renal decline in the following years.", sep="" )
   })
   
   text_longitudinal <- eventReactive(input$goButton, {  
     paste("The figure below illustrates the estimated longitudinal trajectory of the patient's eGFR measurements given the their information.", sep="" )
   })
   
-  plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"prob.prog"]*100,2))})
+  plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"pred.prob"]*100,2))})
   
   text_data <- eventReactive(input$goButton,{
     if(input$add_pred==2){

@@ -4,5 +4,5 @@
 .Ruserdata
 
 renv/
-risk_model.rds
-riskpred_model.rds
+shiny/predmodel_shinyObject.rds
+scr/predmodel_lmer.rds

@@ -5,7 +5,7 @@
 ################################
 
 pacman::p_load(shiny, shinyjs, shinythemes, lme4, ggplot2, reshape2, dplyr, tidyverse, png, shinyWidgets)
-source("functions_aux.R")
+source("functions_shiny.R")
 
 # -------------------- SHINY User Interface  ---------------------------
 
@@ -14,7 +14,7 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
            tabPanel(title="Home",
                     
                     fluidPage(
-                      h1(id="big-heading" ,"Risk prediction calculator for renal decline in individuals with type 2 diabetes mellitus"),
+                      h1(id="big-heading" ,"Web implementation of the prediction model for renal decline in individuals with type 2 diabetes mellitus"),
                       
                       h4(id="text1", "Renal decline is a prevalent issue in patients with type 2 diabetes mellitus. Early on detection through the use of diagnostic 
                          tools such as risk prediction calculators allow to identify subjects with an increased risk for kidney decline over the course 
@@ -101,8 +101,8 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                       # Input: Slider for the number of bins ----
                                       h5(prettyRadioButtons("BL_sex", "Sex:",
                                                    c("female"=1, "male"=0), inline=T, shape = "square")),
-                                      h5(numericInputIcon("BL_age", "Age, years:", value=67, min=18, max=75)),
-                                      h5(numericInputIcon("BL_bmi", "BMI (kg/m2):", value=36, min=11, max=40)),
+                                      h5(numericInputIcon("BL_age", "Age, years:", value=65, min=18, max=75)),
+                                      h5(numericInputIcon("BL_bmi", "BMI (kg/m2):", value=22, min=11, max=40)),
                                       h5(prettyRadioButtons("BL_smoking", "Smoking status:",
                                                    choices = c("never"=0, "ever"=1),inline=T,shape = "square")),
 
@@ -112,7 +112,7 @@ navbarPage("BEAt-DKD", theme = shinytheme("spacelab"),
                                       prettyCheckbox("BL_med_lipid", "Lipid-lowering"),
                                       prettyCheckbox("BL_med_dm", "Glucose-lowering"),
                                       h4(" -------------------------------- "),
-                                      h5(numericInput("BL_eGFR", "Baseline eGFR = ",value=54, min=30, max=145, width="50%"))
+                                      h5(numericInput("BL_eGFR", "Baseline eGFR = ",value=50, min=30, max=145, width="50%"))
                                       ),
                                column(2,
                                       shinyjs::hidden(
