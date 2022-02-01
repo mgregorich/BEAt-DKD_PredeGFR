@@ -32,7 +32,10 @@ plot_trajectory <- function(x){
   p1 <- ggplot2::ggplot(x, ggplot2::aes(x=Time, y=pred)) +
     ggplot2::geom_point(size=3, shape=8) +
     ggplot2::geom_line() +
-    ggplot2::scale_x_continuous("Time", limits = c(0,7), breaks = seq(0,7,1)) +
+    ggplot2::geom_ribbon(aes(ymin = pred.lo, ymax = pred.up), 
+                         alpha = 0.1) +
+    ggplot2::scale_x_continuous("Time (years after baseline)", 
+                                limits = c(0, 5), breaks = seq(0, 10, 1)) +
     ggplot2::scale_y_continuous("Predicted eGFR") +
     ggplot2::theme_bw() +
     ggplot2::theme(text = ggplot2::element_text(size=16))
