@@ -7,7 +7,12 @@
 
 # ---------------------------- SHINY Server --------------------------
 source("www/functions_shiny.R",local=TRUE)
-pred_model <- readRDS("www/predmodel_shinyObject.rds")
+
+# load model
+pred_model <- readJSON("www/predmodel_shinyObject.json")
+# input conversion
+pred_model$form = as.formula(pred_model$form)
+names(pred_model$betas) = pred_model$betas_names
 
 shinyServer(function(input, output, session) {
   

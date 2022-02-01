@@ -86,13 +86,13 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95
   idVar2 = "Country"
   timeVar = "Time"
   times_to_pred=list("1"=times)
-  formYx = lmerList$form
+  formYx = as.formula(lmerList$form)
   outcomeVar = str_extract(formYx, "[^~]+")[2]
   betas=lmerList$betas
   G=lmerList$VarRE
   C=lmerList$CorrRE
   sigma=lmerList$sigma
-  V.fe=lmerList$VarFE
+  V.fe=as.matrix(lmerList$VarFE)
   
   # ---- Assign elements of lmer to objects
 

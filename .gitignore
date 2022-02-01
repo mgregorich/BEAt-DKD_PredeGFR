@@ -4,6 +4,5 @@
 .Ruserdata
 
 renv/
-shiny/www/predmodel_shinyObject.rds
-scr/predmodel_lmer.rds
 shiny/rsconnect
+**/*.rds
