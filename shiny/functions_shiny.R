@@ -29,23 +29,20 @@ calc_map <- function(sys, dia){
 
 plot_trajectory <- function(x){
 
-  p1 <- ggplot2::ggplot(x, ggplot2::aes(x=Time, y=pred)) +
-    ggplot2::geom_point(size=3, shape=8) +
-    ggplot2::geom_line() +
-    ggplot2::geom_ribbon(aes(ymin = pred.lo, ymax = pred.up), 
-                         alpha = 0.1) +
-    ggplot2::scale_x_continuous("Time (years after baseline)", 
-                                limits = c(0, 5), breaks = seq(0, 10, 1)) +
-    ggplot2::scale_y_continuous("Predicted eGFR") +
-    ggplot2::theme_bw() +
-    ggplot2::theme(text = ggplot2::element_text(size=16))
+  p1 <- ggplot(x, aes(x=Time, y=pred)) +
+    geom_point(size=3, shape=8) +
+    geom_line() +
+    scale_x_continuous("Time", limits = c(0,7), breaks = seq(0,7,1)) +
+    scale_y_continuous("Predicted eGFR") +
+    theme_bw() +
+    theme(text = element_text(size=16))
   
   return(p1)
 }
 
 smilegraph <- function(risk){
-  happy<-png::readPNG("www/happy.png")
-  sad<-png::readPNG("www/sad.png")
+  happy<-readPNG("happy.png")
+  sad<-readPNG("sad.png")
   plot(0:10,0:10,ty="n", xlab="", ylab="")
   
   num<-round(risk)
@@ -89,8 +86,8 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95
   idVar2 = "Country"
   timeVar = "Time"
   times_to_pred=list("1"=times)
-  formYx =as.formula(lmerList$form)
-  outcomeVar = stringr::str_extract(formYx, "[^~]+")[2]
+  formYx = as.formula(lmerList$form)
+  outcomeVar = str_extract(formYx, "[^~]+")[2]
   betas=lmerList$betas
   G=lmerList$VarRE
   C=lmerList$CorrRE
@@ -135,13 +132,13 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95
   y_hat_time <- c(X_new_pred %*% betas) + rowSums(Z_new_pred * b.new) 
   
   # ------ eGFR slope per individual
-  dyit_hat <- betas[stringr::str_detect(names(betas), paste0(timeVar,"$"))] + 
-    c(X_new[,!stringr::str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
-        betas[stringr::str_detect(names(betas), paste0(timeVar,":"))]) +
-    c(b.new[,stringr::str_detect(colnames(b.new), "Time")])
+  dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
+    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
+        betas[str_detect(names(betas), paste0(timeVar,":"))]) +
+    c(b.new[,str_detect(colnames(b.new), "Time")])
   
   # ------ Prediction interval
-  V.fe.dev <- V.fe[stringr::str_detect(rownames(V.fe), "Time"), stringr::str_detect(colnames(V.fe), "Time")]
+  V.fe.dev <- V.fe[str_detect(rownames(V.fe), "Time"), str_detect(colnames(V.fe), "Time")]
   
   V0i= X_new %*% tcrossprod(V.fe,X_new)
   diag1<-(G[1,1]/(G[1,1] + sigma^2))^2*V0i
@@ -159,7 +156,7 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95
   SE.yit <- unlist(se)
   
   # Variance of the deviation (dev) dyit
-  X_new_dev <- X_new[,!stringr::str_detect(colnames(X_new_pred), paste0(timeVar))] 
+  X_new_dev <- X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar))] 
   V0i= X_new_dev %*% V.fe.dev %*% X_new_dev
   diag2<-(1-(C[1,2])^2)*G[2,2]
   

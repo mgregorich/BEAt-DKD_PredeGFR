@@ -86,6 +86,31 @@ calcUACR <- function(df){
   return(UACR_mgg_adj)
 }
 
+# -------------------------- DATA STORAGE -----------------
+
+#' @title Wrapper to store list object as .json file
+#' 
+#' @details
+#' Uses `jsonlite` package for conversion to minified JSON format. 
+#' 
+#' Converts formulas to strings. 
+#' 
+#' Cannot deal with all R types, only those used in this project.
+saveJSON <- function(object, file) {
+  # convert unmapped R types
+  for (i in 1:length(object)) {
+    if (is.formula(object[[i]]))
+      object[[i]] <- deparse1(object[[i]])
+  }
+  
+  write(jsonlite::toJSON(object, digits = NA), file)
+}
+
+#' @title Wrapper to read stored .json files
+readJSON <- function(file) {
+  jsonlite::read_json(file, simplifyVector = TRUE)
+}
+
 # -------------------------- MODELLING --------------------
 
 adjusted_R2 <- function(pred, obs, N, k){
@@ -142,12 +167,15 @@ extractLMER <- function(lmerObject, idVar){
   sigma <- lmerObject@sigma   
   
   # fixed effects covariance matrix
-  V.fe <- as.matrix(vcov(lmerObject))
+  V.fe <- as.data.frame(as.matrix(vcov(lmerObject)))
   
   # fixed effects coefficients
   betas <- fixef(lmerObject)
   
-  out <- list("form"=formYx,"VarRE"=V.re, "CorrRE"=C.re, "VarFE"=V.fe, "betas"=betas, "sigma"=sigma)
+  out <- list("form"=formYx,
+              "VarRE"=V.re, "CorrRE"=C.re, "VarFE"=V.fe, 
+              "betas"=betas, "betas_names"=names(betas),
+              "sigma"=sigma)
   return(out)
 }
 

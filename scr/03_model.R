@@ -38,7 +38,10 @@ data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pre
 saveRDS(fit.final, paste0(out.path,"predmodel_lmerObject.rds"))
 
 pred_components <- extractLMER(fit.final, idVar = "PatID")
-saveRDS(pred_components, paste0(shiny.path,"/predmodel_shinyObject.rds"))
+saveRDS(pred_components, 
+        file.path(shiny.path, "www/predmodel_shinyObject.rds"))
+saveJSON(pred_components, 
+         file.path(shiny.path,"www/predmodel_shinyObject.json"))
 
 
 # ---- (2) Model parameter ----

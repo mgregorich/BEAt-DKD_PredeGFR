@@ -7,7 +7,12 @@
 
 # ---------------------------- SHINY Server --------------------------
 source("www/functions_shiny.R",local=TRUE)
-pred_model <- readRDS("www/predmodel_shinyObject.rds")
+
+# load model
+pred_model <- readJSON("www/predmodel_shinyObject.json")
+# input conversion
+pred_model$form = as.formula(pred_model$form)
+names(pred_model$betas) = pred_model$betas_names
 
 shinyServer(function(input, output, session) {
   
@@ -72,7 +77,7 @@ shinyServer(function(input, output, session) {
     
     pred <- data.frame("Time"=odata$Time, "Prediction"=odata$pred, "CI"=odata$pred.CI)
     pred$CI[1] <- ""
-    colnames(pred) <- c("FU Time", "Prediction","95% Confidence interval")
+    colnames(pred) <- c("Year", "Prediction","95% Confidence interval")
    
     slope <- data.frame("Slope"=odata$pred.slope[1], "CI"=odata$slope.CI[1])
     colnames(slope) <- c("eGFR slope", "95% Confidence interval")
@@ -88,15 +93,20 @@ shinyServer(function(input, output, session) {
     idata$BL_sex <- ifelse(idata$BL_sex==1, "female", "male")
     
     if(input$add_pred==2){
-      idemo <- data.frame("General"=c("Baseline eGFR", "Age","Sex", "BMI", "Smoking"), "Values"=unlist(idata[,c("FU_eGFR_epi","BL_age", "BL_sex", "BL_bmi", "BL_smoking")]))
-      imed <- data.frame("Medication"=c("Glucose-lowering med.", "Blood pressure-lowering med.", "Lipid-lowering med."), "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
-      ilab <- data.frame("Laboratory"=c("Hemoglobin", "Hba1C", "Serum Cholesterol", "MAP", "log2UACR"), "Values"=unlist(idata[,c("BL_hemo", "BL_hba1c", "BL_serumchol", "BL_map", "BL_uacr_log2")]))
+      idemo <- data.frame("General"=c("Baseline eGFR", "Sex", "Age", "BMI", "Smoking"), 
+                          "Values"=unlist(idata[,c("FU_eGFR_epi", "BL_sex", "BL_age", "BL_bmi", "BL_smoking")]))
+      imed <- data.frame("Medication"=c("Glucose-lowering", "Blood pressure-lowering", "Lipid-lowering"), 
+                         "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
+      ilab <- data.frame("Laboratory"=c("Hemoglobin", "Mean arterial pressure",  "Hba1C", "Serum cholesterol", "log-2 UACR"), 
+                         "Values"=unlist(idata[,c("BL_hemo", "BL_map", "BL_hba1c", "BL_serumchol", "BL_uacr_log2")]))
 
       return(list("idemo"=idemo,"ilab"=ilab,"imed"=imed))
     }
     else{
-      idemo <- data.frame("General"=c("Baseline eGFR", "Age","Sex", "BMI", "Smoking"), "Values"=unlist(idata[,c("FU_eGFR_epi","BL_age", "BL_sex", "BL_bmi", "BL_smoking")]))
-      imed <- data.frame("Medication"=c("Glucose-lowering med.", "Blood pressure-lowering med.", "Lipid-lowering med."), "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
+      idemo <- data.frame("General"=c("Baseline eGFR", "Sex", "Age", "BMI", "Smoking"), 
+                          "Values"=unlist(idata[,c("FU_eGFR_epi","BL_sex", "BL_age", "BL_bmi", "BL_smoking")]))
+      imed <- data.frame("Medication"=c("Glucose-lowering", "Blood pressure-lowering", "Lipid-lowering"), 
+                         "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
       
       return(list("idemo"=idemo,"imed"=imed))
     }
@@ -105,8 +115,8 @@ shinyServer(function(input, output, session) {
   
   # ---------- Execute --------------------------------------------------------
   text_risk1 <- eventReactive(input$goButton, {  
-    paste("Based on the provided information and a slope cutpoint of ", input$cutpoint,"mL/min/1.73m2, 
-          the probability of the subject to progress into the group of rapid decline in renal function is ",  
+    paste("Based on the provided information and a slope cutpoint of ", input$cutpoint," mL/min/1.73m², 
+          the patient's probability of rapid decline in renal function is ",  
           round(calc_out()[1,"pred.prob"]*100,2), "%.", sep="" )
     })
   
@@ -115,7 +125,7 @@ shinyServer(function(input, output, session) {
   })
   
   text_longitudinal <- eventReactive(input$goButton, {  
-    paste("The figure below illustrates the exptected sequential trajectory of the patient's future eGFR measurements given the provided information.", sep="" )
+    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements given the provided information.", sep="" )
   })
   
   plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"pred.prob"]*100,2))})
