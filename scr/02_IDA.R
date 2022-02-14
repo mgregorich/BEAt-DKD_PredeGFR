@@ -74,7 +74,7 @@ x_tmp <- data.frame(model.matrix(FU_eGFR_epi~BL_age + BL_sex + BL_smoking + BL_b
                       + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid, 
                       data=data.full[data.full$Time_cat==0,])[,-1])
 colnames(x_tmp) <- c("Age", "Sex", "Smoking", "BMI", "MAP", "Hba1C", "Serum chol.", "Hemoglobin", "log2UACR", "Glucose-low. Med.", "BP-low. Med.", "Lipid-low. Med.")
-corr <- cor(x_tmp)
+corr <- cor(x_tmp, method = "spearman")
 (abs(corr)>0.5)
 
 melted_cormat <- melt(round(corr,4))
@@ -90,7 +90,7 @@ ggplot(data = melted_cormat, aes(x=Var1, y=reorder(Var2, desc(Var2)), fill=value
   scale_y_discrete("") +
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
                        midpoint = 0, limit = c(-1,1), space = "Lab", 
-                       name="Pearson\nCorrelation") +
+                       name="Spearman\nCorrelation") +
   theme_bw() +
   theme(legend.position = "right", text=element_text(size=16),
         axis.text.x = element_text(angle = 45, hjust=1), 

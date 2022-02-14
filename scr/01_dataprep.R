@@ -17,6 +17,14 @@ tripod_flowchart <- data.frame("Step"=c("all",  "excl2_baseunder30",  "excl3_nob
 # ================== Data Pre-processing =======================================
 
 ## -----  DIACORE -----
+recodeDates <- function(x){
+  x=as.character(x)
+  x=str_replace(x, "Mrz", "März")
+  x.new=if_else(str_detect(x, "^[:digit:]+$"), as.character(as.Date(as.numeric(x), origin = "1899-12-30")), as.character(as.Date(x, "%d%b%Y")))
+  x.new = as.Date(x.new)
+  return(x.new)
+}
+
 data.diacore <-  read_excel(paste0(DIACORE.path, "BeatDKD_DIACORE_V1_V2R_V3R_13Mar2019_korr_13Aug2019_all_variables_nopw.xlsx"))
 data.diacore$visitDate_char_V1=do.call("c",lapply(data.diacore$visitDate_char_V1, recodeDates))
 data.diacore$visitDate_char_V2=do.call("c",lapply(data.diacore$visitDate_char_V2, recodeDates))
@@ -53,6 +61,9 @@ data.diacore$Time_cont=ifelse((data.diacore$Time_cat==1), round(difftime(data.di
 data.diacore$Time_cont=ifelse((data.diacore$Time_cat==2), round(difftime(data.diacore$FU2_date,data.diacore$FU0_date,units="days")/365.25,3), data.diacore$Time_cont)
 data.diacore$Time_cat= round(data.diacore$Time_cont)
 
+data.diacore <- data.diacore %>%
+  dplyr::select(PatID, Time_cat, Time_cont, FU_eGFR_epi, Cohort, Country, BL_age, BL_sex, BL_smoking, BL_bmi, BL_map, BL_bpsys,     
+               BL_bpdia, BL_uacr, BL_hba1c_perc, BL_serumchol, BL_hemo, BL_med_lipid, BL_med_bp, BL_med_dm, BL_uacr_log2, BL_hba1c)
 
 
 ## ----- GCKD ------
@@ -194,7 +205,7 @@ tmp1 <- tmp %>%
 tmp1$Time_cont <- 0
 
 data.provalid <- data.frame(rbind(tmp1, anti_join(data.provalid, tmp)))
-
+data.provalid <- data.provalid[!data.provalid$Country %in% "NL",]
   
 
 # =========================== Merge datasets  ==================================
@@ -254,6 +265,7 @@ tripod_flowchart$GCKD[4] <- length(unique(data.gckd[data.gckd$PatID %in% excl_pa
 drop.fu3 <- names(which(table(data.diacore$PatID) < 3))
 tripod_flowchart$DIACORE[4] <- length(drop.fu3)
 
+
 # Remove
 data.all <- data.all[!data.all$PatID %in% c(excl_patid_1, excl_patid_2,excl_patid_3),]
 data.diacore <- data.diacore %>%
@@ -267,6 +279,11 @@ tripod_flowchart$DIACORE[5] <- length(unique(data.diacore$PatID))
 
 
 # =========================== Complete-cases ===================================
+
+data.diacore %>%
+  filter(Time_cat==0) %>%
+  skim()
+
 data.full <- data.all[complete.cases(data.all),]
 data.full$Country <- factor(data.full$Country, levels=c("AT", "GE", "HU", "PL", "UK", "NL"))
 data.rem <- data.all[!complete.cases(data.all),]

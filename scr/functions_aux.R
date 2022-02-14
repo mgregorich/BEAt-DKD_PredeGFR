@@ -9,6 +9,7 @@
 # --------------------------- GENERAL ---------------------
 
 recodeDates <- function(x){
+  x=as.character(x)
   x=str_replace(x, "Mrz", "März")
   x.new=if_else(str_detect(x, "^[:digit:]+$"), as.character(as.Date(as.numeric(x), origin = "1899-12-30")), as.character(as.Date(x, "%d%b%Y")))
   x.new = as.Date(x.new)
@@ -150,7 +151,7 @@ extractLMER <- function(lmerObject, idVar){
   return(out)
 }
 
-draw_bootstrap_sample <- function(data.tmp){
+draw_bootstrap_sample <- function(data.tmp, cv=T){
   pats.boot <- data.tmp %>%
     filter(Time==0) %>%
     group_by(Country) %>%
@@ -158,7 +159,7 @@ draw_bootstrap_sample <- function(data.tmp){
     dplyr::select(PatID, Country) %>%
     data.frame()
   data.boot <- data.tmp[data.tmp$PatID %in% pats.boot$PatID,]
-  data.boot$fold <- as.numeric(data.boot$Country)
+  if(cv){data.boot$fold <- as.numeric(data.boot$Country)}
   
   return(data.boot)
 }
@@ -200,7 +201,7 @@ intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
     data.test.list <- split(data.test.new, as.factor(data.test.new$Time)) 
     res <- lapply(data.test.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi, lmerObject=fit.lmer))
     ov.perf <- eval_preds(data.test.new[!data.test.new$Time==0,]$pred, data.test.new[!data.test.new$Time==0,]$FU_eGFR_epi, lmerObject = fit.lmer)
-    df.res[[i]] <- data.frame("Boot"=b.nr,"Fold"=i,"Time"=c(100,unique(data.boot$Time)),rbind( ov.perf, do.call(rbind, res)))
+    df.res[[i]] <- data.frame("Boot"=b.nr,"Fold"=i,"Test.country"=data.test$Country[1],"Time"=c(100,unique(data.boot$Time)),rbind( ov.perf, do.call(rbind, res)))
   }
   
   if(return_preds){
@@ -288,8 +289,8 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
                                  level = 0.95, cutpoint=-3, all_times) 
 {
   # Specify to try the function
-  # lmerObject = fit.final
-  # newdata = data.full.t0
+  # lmerObject = risk_model
+  # newdata = data.boot.t0
   # timeVar = "Time"
   # idVar <- "PatID"
   # idVar2="Country"
@@ -372,8 +373,8 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
   id_pred <- rep(seq_len(n), sapply(times_to_pred, length))
   
   # ------ Create set with new rows for preds
-  newdata_pred <- right_rows(newdata, newdata[[timeVar]], id, 
-                             times_to_pred)
+  newdata_pred <- right_rows(data=newdata, times=newdata[[timeVar]], ids=id, 
+                             Q_points=times_to_pred)
   newdata_pred[[timeVar]] <- unlist(times_to_pred)
   mfX_new_pred <- model.frame(TermsX, data = newdata_pred, 
                               na.action = NULL)

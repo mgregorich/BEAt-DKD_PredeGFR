@@ -9,19 +9,19 @@
 tbl_performance <- list()
 tbl_performance[[1]] <- df.stats %>%
   group_by(Time) %>%
-  summarize_at(.vars=names(.)[4:12], mean, na.rm=T) %>%
+  summarize_at(.vars=names(.)[5:13], mean, na.rm=T) %>%
   mutate(Time=as.character(Time),
          Time=replace(Time, Time == "100", "Overall"))
 
 tbl_performance[[2]]<- df.stats %>%
   group_by(Time) %>%
-  summarize_at(.vars=names(.)[4:12], quantile, 0.05, na.rm=T) %>%
+  summarize_at(.vars=names(.)[5:13], quantile, 0.05, na.rm=T) %>%
   mutate(Time=as.character(Time),
          Time=replace(Time, Time == "100", "Overall"))
 
 tbl_performance[[3]] <- df.stats %>%
   group_by(Time) %>%
-  summarize_at(.vars=names(.)[4:12], quantile, 0.95, na.rm=T) %>%
+  summarize_at(.vars=names(.)[5:13], quantile, 0.95, na.rm=T) %>%
   mutate(Time=as.character(Time),
          Time=replace(Time, Time == "100", "Overall"))
 df.tmp <- data.frame(do.call(cbind, tbl_performance))
@@ -231,7 +231,7 @@ df <- data.frame(variable=rownames(summary(fit.final)$coefficients),
                  lower=summary(fit.final)$coefficients[,1] - 1.96*summary(fit.final)$coefficients[,2],
                  upper=summary(fit.final)$coefficients[,1] + 1.96* summary(fit.final)$coefficients[,2]) 
 df$variable <- factor(df$variable, levels = df$variable[length(df$variable):1])
-df$Group <- ifelse(str_detect(df$variable, "Time:"), "Effect on eGFR slope", "Effect on eGFR value")
+df$Group <- ifelse(str_detect(df$variable, "Time:"), "Main effect", "Interaction effect")
 df <- mutate(df, Group = fct_rev(Group)) 
 df$variable <- as.factor(str_replace(df$variable, "Time:", ""))
 df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_sex1","BL_bmi","BL_smoking1","BL_map","BL_hba1c","BL_serumchol", "BL_hemo",
@@ -264,7 +264,7 @@ df <- data.frame(variable=rownames(summary(fit.scaled)$coefficients),
                  lower=summary(fit.scaled)$coefficients[,1] - 1.96*summary(fit.scaled)$coefficients[,2],
                  upper=summary(fit.scaled)$coefficients[,1] + 1.96* summary(fit.scaled)$coefficients[,2]) 
 df$variable <- factor(df$variable, levels = df$variable[length(df$variable):1])
-df$Group <- ifelse(str_detect(df$variable, "Time:"), "Effect on eGFR slope", "Effect on eGFR value")
+df$Group <- ifelse(str_detect(df$variable, "Time:"), "Interaction effect", "Main effect")
 df <- mutate(df, Group = fct_rev(Group)) 
 df$variable <- as.factor(str_replace(df$variable, "Time:", ""))
 df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_sex1","BL_bmi","BL_smoking1","BL_map","BL_hba1c","BL_serumchol", "BL_hemo",
@@ -278,9 +278,9 @@ ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lowe
   geom_point(size=2, shape=1) + 
   geom_errorbarh(height=.25) +
   scale_y_discrete("") +
-  scale_x_continuous("Standardized Effect") +
+  scale_x_continuous("Standardized Effect", limits = c(-0.4,0.4), breaks=seq(-0.4,0.4,0.1)) +
   geom_vline(xintercept=0, linetype="dashed", color = "red") +
-  facet_wrap(~Group, scales="free_x") +
+  facet_wrap(~Group) +
   theme_bw() +
   theme(text = element_text(size = 12))
 ggsave(paste0(out.path, "plot_forest_standardized.tiff"),  width=8, height=4, device='tiff', dpi=350, compression = 'lzw')
