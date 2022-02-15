@@ -29,7 +29,7 @@ data.full.t0$Country <- "Unknown"
 res <- update_PredByBase(lmerObject=fit.final, newdata = data.full.t0, timeVar = "Time", idVar="PatID", idVar2="Country",
                        times = unique(data.full$Time_cat)[-1], all_times=F)
 data.full$Time <- round(data.full$Time,0)
-data.preds <- full_join(data.full, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
+data.preds <- full_join(data.full, res[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
 
 
 # ================== Internal validation  ======================
@@ -119,7 +119,7 @@ j=1; b=nboot
 
 # Cross-validated predictions
 data.full$fold <- as.numeric(data.full$Country)
-res <- intext_crossvalidate(data.full,NA, return_preds = T)
+res <- intext_crossvalidate(data.full, NA, return_preds = T)
 df.preds <- res$pred
 
 # Cross-validated performance measures

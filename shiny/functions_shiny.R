@@ -24,25 +24,54 @@ calc_map <- function(sys, dia){
   return(map)
 }
 
+# ============================== DATA STORAGE ==============================
+
+#' @title Wrapper to store list object as .json file
+#' 
+#' @details
+#' Uses `jsonlite` package for conversion to minified JSON format. 
+#' 
+#' Converts formulas to strings. 
+#' 
+#' Cannot deal with all R types, only those used in this project.
+saveJSON <- function(object, file) {
+  # convert unmapped R types
+  for (i in 1:length(object)) {
+    if (is.formula(object[[i]]))
+      object[[i]] <- deparse1(object[[i]])
+  }
+  
+  write(jsonlite::toJSON(object, digits = NA), file)
+}
+
+#' @title Wrapper to read stored .json files
+readJSON <- function(file) {
+  jsonlite::read_json(file, simplifyVector = TRUE)
+}
 
 # =============================== PLOTS ========================================
 
 plot_trajectory <- function(x){
-
-  p1 <- ggplot(x, aes(x=Time, y=pred)) +
-    geom_point(size=3, shape=8) +
-    geom_line() +
-    scale_x_continuous("Time", limits = c(0,7), breaks = seq(0,7,1)) +
-    scale_y_continuous("Predicted eGFR") +
-    theme_bw() +
-    theme(text = element_text(size=16))
   
+  p1 <- ggplot2::ggplot(x, ggplot2::aes(x=Time, y=pred)) +
+    ggplot2::geom_point(ggplot2::aes(colour="Predicted eGFR"),size=5, shape=8)  +
+    ggplot2::geom_point(ggplot2::aes(x=0, y=BaseGFR[1], colour="Observed eGFR"), shape=8, size=5) +
+    ggplot2::geom_line() +
+    ggplot2::scale_color_manual("",values = c("Predicted eGFR" = "black", "Observed eGFR" = "red3")) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = pred.lo, ymax = pred.up), 
+                         alpha = 0.1) +
+    ggplot2::scale_x_continuous("Follow-up time (in years)", 
+                                limits = c(0, 5), breaks = seq(0, 10, 1)) +
+    ggplot2::scale_y_continuous(expression(paste("eGFR (mL/min/1.73 ", m^2, ")"))) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(text = ggplot2::element_text(size=20), legend.position = "top")
+  p1
   return(p1)
 }
 
 smilegraph <- function(risk){
-  happy<-readPNG("happy.png")
-  sad<-readPNG("sad.png")
+  happy<-png::readPNG("www/happy.png")
+  sad<-png::readPNG("www/sad.png")
   plot(0:10,0:10,ty="n", xlab="", ylab="")
   
   num<-round(risk)
@@ -79,15 +108,15 @@ smilegraph <- function(risk){
 
 # ==================== PREDICTION UPDATE WITH BASELINE VALUES  =================
 
-update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95) 
+update_PredByBase <- function (lmerList, newdata, cutpoint=-3, level=0.95) 
 {
   # ---- Specify relevant components
   idVar = "PatID"
   idVar2 = "Country"
   timeVar = "Time"
-  times_to_pred=list("1"=times)
+  times_to_pred=list("1"=0:5)
   formYx = as.formula(lmerList$form)
-  outcomeVar = str_extract(formYx, "[^~]+")[2]
+  outcomeVar = stringr::str_extract(formYx, "[^~]+")[2]
   betas=lmerList$betas
   G=lmerList$VarRE
   C=lmerList$CorrRE
@@ -132,13 +161,13 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95
   y_hat_time <- c(X_new_pred %*% betas) + rowSums(Z_new_pred * b.new) 
   
   # ------ eGFR slope per individual
-  dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
-    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
-        betas[str_detect(names(betas), paste0(timeVar,":"))]) +
-    c(b.new[,str_detect(colnames(b.new), "Time")])
+  dyit_hat <- betas[stringr::str_detect(names(betas), paste0(timeVar,"$"))] + 
+    c(X_new[,!stringr::str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
+        betas[stringr::str_detect(names(betas), paste0(timeVar,":"))]) +
+    c(b.new[,stringr::str_detect(colnames(b.new), "Time")])
   
   # ------ Prediction interval
-  V.fe.dev <- V.fe[str_detect(rownames(V.fe), "Time"), str_detect(colnames(V.fe), "Time")]
+  V.fe.dev <- V.fe[stringr::str_detect(rownames(V.fe), "Time"), stringr::str_detect(colnames(V.fe), "Time")]
   
   V0i= X_new %*% tcrossprod(V.fe,X_new)
   diag1<-(G[1,1]/(G[1,1] + sigma^2))^2*V0i
@@ -151,12 +180,12 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95
   for (time in unlist(times_to_pred)) {
     z <- c(1, time)
     Vit_star <- V0i + (z %*% G_star%*% z) + sigma^2
-    se[[time]] <- sqrt(Vit_star)
+    se[[time+1]] <- sqrt(Vit_star)
   }
   SE.yit <- unlist(se)
   
   # Variance of the deviation (dev) dyit
-  X_new_dev <- X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar))] 
+  X_new_dev <- X_new[,!stringr::str_detect(colnames(X_new_pred), paste0(timeVar))] 
   V0i= X_new_dev %*% V.fe.dev %*% X_new_dev
   diag2<-(1-(C[1,2])^2)*G[2,2]
   
@@ -176,22 +205,11 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, times, level=0.95
   
   # ------Output
   # Predictions + CI
-  out_data <- rbind(newdata, newdata_pred)
-  out_data$pred <- c(y_hat_0, y_hat_time)
+  out_data <- data.frame(newdata_pred, "prior.pred"=pred_y_it, "pred"=y_hat_time, "pred.lo"=low, "pred.up"=upp,
+                         "pred.slope"=dyit_hat, "pred.slope.lo"=low.dev, "pred.slope.up"=upp.dev,
+                         "pred.prob"=prob.prog)
   out_data$Time_cat <- out_data$Time
-  out_data$prior.pred <- c(pred_y_i0, pred_y_it)
-  out_data$pred.lo <- c(rep(NA, length(pred_y_i0)), low)
-  out_data$pred.up <- c(rep(NA, length(pred_y_i0)), upp)
-  
-  times_rep <- c(sapply(times_to_pred, length))
-  out_data$pred.slope <- c(dyit_hat, rep(dyit_hat, times_rep))
-  out_data$pred.slope.lo <- c(low.dev, rep(low.dev, times_rep))
-  out_data$pred.slope.up <- c(upp.dev, rep(upp.dev, times_rep))
-  out_data$pred.prob <- c(prob.prog, rep(prob.prog, times_rep))
-  
   out_data <- out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
-  
-  res <- out_data
-  return(res)
+  return(out_data)
 }
 

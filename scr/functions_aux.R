@@ -214,18 +214,16 @@ intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
                                 newdata = data.test.t0, 
                                 cutpoint = slope_cutpoint,
                                 timeVar = "Time", idVar="PatID", idVar2="Country",
-                                times =unique(data.boot$Time_cat)[-1], 
-                                all_times=F)
+                                times =unique(data.boot$Time_cat))
     
     # Summarize and prepare output
     data.test$Time <- round(data.test$Time,0)
-    data.test.new <- full_join(data.test, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
+    data.test.new <- full_join(data.test, res[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
     data.test.new$fold <- i
     data.test.new$Country <- data.test$Country[1]
     data.test.new$Cohort <- data.test$Cohort[1]
     df.pred[[i]] <- data.test.new
-    df.re[[i]] <- data.frame("PatID"= data.test.t0$PatID, "Fold"= i, res$RE.est)
-    
+
     data.test.list <- split(data.test.new, as.factor(data.test.new$Time)) 
     res <- lapply(data.test.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi, lmerObject=fit.lmer))
     ov.perf <- eval_preds(data.test.new[!data.test.new$Time==0,]$pred, data.test.new[!data.test.new$Time==0,]$FU_eGFR_epi, lmerObject = fit.lmer)
@@ -233,7 +231,7 @@ intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
   }
   
   if(return_preds){
-    out <- list("pred"=do.call(rbind, df.pred), "res"=do.call(rbind, df.res), "re"=do.call(rbind, df.re))
+    out <- list("pred"=do.call(rbind, df.pred), "res"=do.call(rbind, df.res))
   }else{
     out <- list("res"=do.call(rbind, df.res))
   }
@@ -317,15 +315,14 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
                                  level = 0.95, cutpoint=-3, all_times) 
 {
   # Specify to try the function
-  # lmerObject = risk_model
-  # newdata = data.boot.t0
-  # timeVar = "Time"
-  # idVar <- "PatID"
-  # idVar2="Country"
-  # times = seq(1,8,1)
-  # all_times = F
-  # level = 0.95
-  # cutpoint=-3
+  lmerObject = fit.final
+  newdata = data.full.t0
+  timeVar = "Time"
+  idVar <- "PatID"
+  idVar2="Country"
+  times = seq(0,8,1)
+  level = 0.95
+  cutpoint=-3
 
   
   # ---- Assign elements of lmer to objects
@@ -395,9 +392,7 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
   }
   id <- match(newdata[[idVar]], unique(newdata[[idVar]]))
   last_time <- tapply(newdata[[timeVar]], id, max)
-  times_to_pred <- lapply(last_time, function(t) if (all_times) 
-    times
-    else times[times > t])
+  times_to_pred <- lapply(last_time, function(t) times)
   id_pred <- rep(seq_len(n), sapply(times_to_pred, length))
   
   # ------ Create set with new rows for preds
@@ -423,17 +418,7 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
   b0.post <- (G[1,1]/(G[1,1] + sigma^2))*(obs_y-pred_y_i0)
   b1.post <- (b0.post* G[1,2])/(G[1,1])
   b.new <- data.frame("Intercept"=b0.post, "Time"=b1.post)
-  
-  std.error <- function(x) sd(x)/sqrt(length(x))
-  se.b0 <- std.error(b0.post)
-  se.b1 <- std.error(b1.post)
-  
-  RE_estimates <- data.frame("b0.est"=b0.post, "b0.se"=se.b0, 
-                             "b0.lo"=b0.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
-                             "b0.up"=b0.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b0, 
-                             "b1.est"=b1.post, "b1.se"=se.b1, 
-                             "b1.lo"=b1.post-qnorm((1-level)/2,lower.tail=FALSE)*se.b1, 
-                             "b0.up"=b1.post+qnorm((1-level)/2,lower.tail=FALSE)*se.b1)
+
   
   # -------- Compute E(Y(t=time)|y_i0) + 95% - CI
   y_hat_0 <- c(X_new %*% betas) + rowSums(Z_new * b.new) + Z_2_new
@@ -464,7 +449,7 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
     for (time in times_to_pred[[i]]) {
       z <- c(1, time)
       Vit_star <- V0i + (z %*% G_star%*% z) + sigma^2
-      se[[time]] <- sqrt(Vit_star)
+      se[[time+1]] <- sqrt(Vit_star)
     }
     SE.yit[[i]] <- unlist(se)
     
@@ -490,22 +475,12 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
   
   # ------Output
   # Predictions + CI
-  out_data <- rbind(newdata, newdata_pred)
-  out_data$pred <- c(y_hat_0, y_hat_time)
+  out_data <- data.frame(newdata_pred, "prior.pred"=pred_y_it, "pred"=y_hat_time, "pred.lo"=low, "pred.up"=upp,
+                         "pred.slope"=dyit_hat, "pred.slope.lo"=low.dev, "pred.slope.up"=upp.dev,
+                         "pred.prob"=prob.prog)
   out_data$Time_cat <- out_data$Time
-  out_data$prior.pred <- c(pred_y_i0, pred_y_it)
-  out_data$pred.lo <- c(rep(NA, length(pred_y_i0)), low)
-  out_data$pred.up <- c(rep(NA, length(pred_y_i0)), upp)
-  
-  times_rep <- c(sapply(times_to_pred, length))
-  out_data$pred.slope <- c(dyit_hat, rep(dyit_hat, times_rep))
-  out_data$pred.slope.lo <- c(low.dev, rep(low.dev, times_rep))
-  out_data$pred.slope.up <- c(upp.dev, rep(upp.dev, times_rep))
-  out_data$pred.prob <- c(prob.prog, rep(prob.prog, times_rep))
-  
   out_data <- out_data[order(out_data[[idVar]], out_data[[timeVar]]),]
   
-  res <- list("Pred" = out_data, "RE.est" = RE_estimates)
-  return(res)
+  return(out_data)
 }
 
