@@ -182,11 +182,11 @@ Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
 
 # Strafied by cohort
 data.tmp <- data.full[data.full$Time_cat==0,]
-table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), strata="Cohort", test=F)))
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_sysdia", "BL_bpdia"), strata="Cohort", test=F)))
 table1_dev <- data.frame(names=row.names(table1), table1) 
 
 data.tmp <- data.diacore[data.diacore$Time_cat == 0,]
-table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), test=F)))
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_sysdia", "BL_bpdia"), test=F)))
 table1_val <- data.frame(names=row.names(table1), table1) 
 
 table1_all <- full_join(table1_dev, table1_val, by="names") %>%

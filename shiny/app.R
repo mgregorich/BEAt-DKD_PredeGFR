@@ -8,3 +8,9 @@
 # Create Shiny app ----
 shinyApp(ui = ui, server = server)
 
+# Upload to shinyapps.io
+library(rsconnect)
+rsconnect::setAccountInfo(name='beatdkd',
+                          token='<TOKEN>',  # token and secret must be inserted
+                          secret='<SECRET>')
+deployApp(appDir = paste0(getwd(),"/shiny/"))

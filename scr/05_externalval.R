@@ -51,7 +51,7 @@ ggplot(data.diacore.new[data.diacore.new$Time_cat <=5,], aes(x=pred, y=FU_eGFR_e
   theme(plot.title = element_text(hjust = 0.5), text=element_text(size=22)) 
 ggsave(paste0(out.path, "fig_calibration_all_diacore_post.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
-df <- melt(data.diacore.new[data.diacore.new$Time_cat <=5 & data.diacore.new$Time_cat >0,c("Time_cont","FU_eGFR_epi", "pred","prior.pred")], id.vars = c("Time_cont", "FU_eGFR_epi"))
+df <- melt(data.diacore.new[data.diacore.new$Time_cat <=5 ,c("Time_cont","FU_eGFR_epi", "pred","prior.pred")], id.vars = c("Time_cont", "FU_eGFR_epi"))
 levels(df$variable) <- c("Post-update", "Pre-update")
 df$variable <- relevel(df$variable, "Pre-update")
 

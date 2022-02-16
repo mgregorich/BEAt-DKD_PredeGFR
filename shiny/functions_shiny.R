@@ -108,7 +108,7 @@ smilegraph <- function(risk){
 
 # ==================== PREDICTION UPDATE WITH BASELINE VALUES  =================
 
-update_PredByBase <- function (lmerList, newdata, cutpoint=-3, level=0.95) 
+update_PredByBase <- function (lmerList, newdata, cutpoint=-3, level=0.95, baseline_eGFR=T) 
 {
   # ---- Specify relevant components
   idVar = "PatID"

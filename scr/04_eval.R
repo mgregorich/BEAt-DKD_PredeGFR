@@ -247,7 +247,7 @@ df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP",
 df$CI <- paste0("(",df$lower,", " ,df$upper,")")
 tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$name, "Time"),c(2,8)])
 colnames(tbl_fixeff) <- c("Variable", "Effect.Baseline", "95% CI", "Effect.Slope", "95% CI")
-write.xlsx(tbl_fixeff, paste0(out.path, "tbl_fixeff.xlsx"), overwrite = TRUE)
+write.xlsx(tbl_fixeff, paste0(out.path, "tbl_coeff_unstd.xlsx"), overwrite = TRUE)
 
 
 
@@ -272,8 +272,15 @@ df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_se
 levels(df$variable) <- list("Intercept"="(Intercept)","Time"="Time", Age  = "BL_age", "Sex (female)" = "BL_sex1", BMI="BL_bmi", "Smoking (ever)"="BL_smoking1", MAP="BL_map", Hba1C="BL_hba1c",
                             "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", "Glucose-low. Med."="BL_med_dm1", "Blood pressure-low. Med."="BL_med_bp1", "Lipid-low. Med."="BL_med_lipid1")
 
+df[,2:4] <- apply(df[,2:4],2, round, digits=3)
+df$name <- rownames(df)
+df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hba1c","Serum chol.",
+                                          "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
+df$CI <- paste0("(",df$lower,", " ,df$upper,")")
+tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$name, "Time"),c(2,8)])
+colnames(tbl_fixeff) <- c("Variable", "Effect.Baseline", "95% CI", "Effect.Slope", "95% CI")
+write.xlsx(tbl_fixeff, paste0(out.path, "tbl_coeff_std.xlsx"), overwrite = TRUE)
 
-head(df)
 ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lower, xmax=upper)) +
   geom_point(size=2, shape=1) + 
   geom_errorbarh(height=.25) +
@@ -304,74 +311,24 @@ summary(df.preds.t0[df.preds.t0$Cohort==1,]$pred.prob)
 
 
 
-# ================= Partial explained variance of individual predictors ========
+# ================= Relative partial importance of individual predictors ========
 
-# # (1) With partR2 function
-# #remotes::install_github("mastoffel/partR2") 
-# library(partR2)
-# library(future)
-# library(furrr)
-# 
-# 
-# pred.batch <-list(Sex = c("BL_sex","Time:BL_sex"),Age = c("BL_age","Time:BL_age"), 
-#                   BMI = c("BL_bmi","Time:BL_bmi"), Smoking = c("BL_smoking","Time:BL_smoking"),
-#                   MAP = c("BL_map","Time:BL_map"), Hba1C = c("BL_hba1c","Time:BL_hba1c"),
-#                   SerumChol = c("BL_serumchol","Time:BL_serumchol"), Hemoglobin = c("BL_hemo","Time:BL_hemo"),
-#                   log2UACR = c("BL_uacr_log2","Time:BL_uacr_log2"), Med_DM = c("BL_med_dm","Time:BL_med_dm"),
-#                   Med_BP = c("BL_med_bp","Time:BL_med_bp"), Med_Lipid = c("BL_med_lipid","Time:BL_med_lipid"))
-# p=1
-# partial.R2.cond <- partial.R2.marg <- list()
-# for(p in 1:length(pred.batch)){
-#   print(paste0("Partial R2 for variable number = ",p))
-#   plan(multisession, workers=detectCores()-2)
-#   partial.R2.cond[[p]] <- partR2(fit.final, partbatch = list(c(pred.batch[[p]])),
-#                                  R2_type = "conditional", nboot = nboot,
-#                                  allow_neg_r2 = T, parallel = T,
-#                                  data=data.full)$R2  
-#   partial.R2.marg[[p]] <- partR2(fit.final, partbatch = list(c(pred.batch[[p]])),
-#                                  R2_type = "marginal", nboot = nboot,
-#                                  allow_neg_r2 = T, parallel = T,
-#                                  data=data.full)$R2 
-#   plan(sequential)
-# }
-# 
-# partR2.cond <- data.frame(do.call(rbind, partial.R2.cond)) %>%
-#   distinct(term, estimate, .keep_all = TRUE) %>%
-#   mutate(drop.R2=first(estimate)-estimate) %>%
-#   mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
-# partR2.marg <- data.frame(do.call(rbind, partial.R2.marg)) %>%
-#   distinct(term, estimate, .keep_all = TRUE) %>%
-#   mutate(drop.R2=first(estimate)-estimate) %>%
-#   mutate(scaled.drop = (drop.R2/sum(drop.R2))*first(estimate))
-# 
-# partial.R2 <- list("Marginal"=partR2.marg, "Conditional"=partR2.cond)
-# 
-# write.xlsx(partial.R2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = T)
-# 
-# 
-
-
-
-
-#  (2) Manual
-b=5
-i=1
 tbl_partialR2 <- data.frame(matrix(NA, nrow=13, ncol = 7))
 colnames(tbl_partialR2) <- c("term", "R2m", "R2m.lo",  "R2m.up", "R2c",  "R2c.lo", "R2c.up")
 
 # --- Full
+i=1
 plan(multisession, gc=T, workers=detectCores()*.6)
-out <- t(future_sapply(1:b, function(x) {
+out <- t(future_sapply(1:nboot, function(x) {
   data.boot <- draw_bootstrap_sample(data.full)
-  fit.full <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
+  fit.full <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
                    data=data.boot, REML=F, control=lmerControl(optimizer="bobyqa"))
   r2.full <- r.squaredGLMM(fit.full)
   return(r2.full)
   }, future.seed = T))
 plan(sequential)
-tbl_partialR2[i, ] <- c("Full", apply(out, 2, function(x) c(mean(x), quantile(x, 0.05), quantile(x, 0.95)))) 
-
+tbl_partialR2[i, ] <- c("Full", apply(out, 2, function(x) c(mean(x), quantile(x, 0.05), quantile(x, 0.95))))
 
 
 # --- Partial
@@ -380,7 +337,7 @@ for(i in 1:length(pred.vars)){
   model.vars <- pred.vars[-i]
   model.formula <- as.formula(paste0("FU_eGFR_epi ~ (Time + Time  *(",paste(model.vars,collapse="+") ,") + (1|Country) + (1+Time|PatID))"))
   plan(multisession, gc=T, workers=detectCores()*.6)
-  out <- t(future_sapply(1:b, function(x) {
+  out <- t(future_sapply(1:nboot, function(x) {
     data.boot <- draw_bootstrap_sample(data.full)
     fit.tmp <- lmer(model.formula,
                     data=data.boot, REML=F, control=lmerControl(optimizer="bobyqa"))
@@ -388,8 +345,8 @@ for(i in 1:length(pred.vars)){
     return(r2.tmp)
   }, future.seed = T))
   plan(sequential)
-  
-  tbl_partialR2[i+1, ] <- c(pred.vars[i], apply(out, 2, function(x) c(mean(x), quantile(x, 0.05), quantile(x, 0.95)))) 
+
+  tbl_partialR2[i+1, ] <- c(pred.vars[i], apply(out, 2, function(x) c(mean(x), quantile(x, 0.05), quantile(x, 0.95))))
 }
 write.xlsx(tbl_partialR2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = T)
 

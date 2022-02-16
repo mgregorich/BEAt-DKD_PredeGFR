@@ -315,14 +315,14 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
                                  level = 0.95, cutpoint=-3, all_times) 
 {
   # Specify to try the function
-  lmerObject = fit.final
-  newdata = data.full.t0
-  timeVar = "Time"
-  idVar <- "PatID"
-  idVar2="Country"
-  times = seq(0,8,1)
-  level = 0.95
-  cutpoint=-3
+  # lmerObject = fit.final
+  # newdata = data.full.t0
+  # timeVar = "Time"
+  # idVar <- "PatID"
+  # idVar2="Country"
+  # times = seq(0,8,1)
+  # level = 0.95
+  # cutpoint=-3
 
   
   # ---- Assign elements of lmer to objects

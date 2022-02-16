@@ -5,15 +5,6 @@
 ################################
 
 
-# data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=65,
-#                        BL_age=65, 
-#                        BL_sex=1, 
-#                        BL_bmi=22, 
-#                        BL_smoking=1,
-#                        BL_hemo=15, BL_hba1c=15, BL_serumchol=15, BL_map=calc_map(sys=85,dia=85),
-#                        BL_uacr_log2=3,
-#                        BL_med_dm=1, BL_med_bp=1, BL_med_lipid=1)
-
 
 # ---------------------------- SHINY Server --------------------------
 source("functions_shiny.R",local=TRUE)
@@ -24,9 +15,7 @@ pred_model <- readJSON("www/predmodel_shinyObject.json")
 pred_model$form = as.formula(pred_model$form)
 names(pred_model$betas) = pred_model$betas_names
 
-not_greater_than <- function(value, limit, message = "Value is too high") {
-  if (value > limit) message
-}
+
 
 shinyServer(function(input, output, session) {
   iv <- shinyvalidate::InputValidator$new()
@@ -51,6 +40,7 @@ shinyServer(function(input, output, session) {
   iv$add_rule("cutpoint", shinyvalidate::sv_required())
   iv$add_rule("cutpoint", shinyvalidate::sv_between(left=-5, right=0))
   
+  ## ==== Display message at start =====
   query_modal <- modalDialog(
     title = 'Note',
     HTML(
@@ -66,16 +56,10 @@ shinyServer(function(input, output, session) {
     easyClose = F, 
     footer = modalButton("Cancel")
   )
-  
   showModal(query_modal)
 
-  observeEvent(input$add_pred, {
 
-    if(input$add_pred == 2){
-      shinyjs::show(id = "lab1")
-    }else{
-      shinyjs::hide(id = "lab1")}})
-  
+  # ===== Check input values ======
   observeEvent(input$goButton, {
     if (iv$is_valid()) {
 
@@ -88,36 +72,26 @@ shinyServer(function(input, output, session) {
 
     }
   })
+
   
+  ## ====== INPUT ================
   inputdata <- eventReactive(input$goButton ,{
     
-    if(input$add_pred==2){
-      data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=input$BL_eGFR,
-                             BL_age=input$BL_age, 
-                             BL_sex=as.numeric(input$BL_sex), 
-                             BL_bmi=input$BL_bmi, 
-                             BL_smoking=as.numeric(input$BL_smoking),
-                             BL_hemo=input$BL_hemo, BL_hba1c=input$BL_hba1c, BL_serumchol=input$BL_serumchol, 
-                             BL_map=calc_map(sys=input$BL_sysbp,dia=input$BL_diabp),
-                             BL_uacr_log2=log(input$BL_uacr,2),
-                             BL_med_dm=input$BL_med_dm*1, BL_med_bp=input$BL_med_bp*1, BL_med_lipid=input$BL_med_lipid*1)
-    }else{
-      data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=input$BL_eGFR,
-                             BL_age=input$BL_age, 
-                             BL_sex=as.numeric(input$BL_sex), 
-                             BL_bmi=input$BL_bmi, 
-                             BL_smoking=as.numeric(input$BL_smoking),
-                             BL_hemo=14.5, BL_hba1c=input$BL_hba1c, BL_serumchol=202, BL_map=calc_map(sys=139,dia=76),
-                             BL_uacr_log2=log(41,2),
-                             BL_med_dm=input$BL_med_dm*1, BL_med_bp=input$BL_med_bp*1, BL_med_lipid=input$BL_med_lipid*1)
-    }
-    
-    
+  data.new <- data.frame(PatID="Pnew", Time=0, Country="Unknown", FU_eGFR_epi=input$BL_eGFR,
+                         BL_age=input$BL_age, 
+                         BL_sex=as.numeric(input$BL_sex), 
+                         BL_bmi=input$BL_bmi, 
+                         BL_smoking=as.numeric(input$BL_smoking),
+                         BL_hemo=input$BL_hemo, BL_hba1c=input$BL_hba1c, BL_serumchol=input$BL_serumchol, 
+                         BL_map=calc_map(sys=input$BL_sysbp,dia=input$BL_diabp),
+                         BL_uacr_log2=log(input$BL_uacr,2),
+                         BL_med_dm=input$BL_med_dm*1, BL_med_bp=input$BL_med_bp*1, BL_med_lipid=input$BL_med_lipid*1)
+
     
     data.new
   })
   
-  
+  # ====== Compute predictions ================
   calc_out <- eventReactive(input$goButton,{
     req(iv$is_valid())
     
@@ -139,6 +113,7 @@ shinyServer(function(input, output, session) {
 
       })
   
+  # ==== Output table =====
   makeOutputTable <- eventReactive(input$goButton, {
     odata <- calc_out()
     odata <- data.frame(odata[,-1])
@@ -147,7 +122,6 @@ shinyServer(function(input, output, session) {
     odata$slope.CI <- paste0("(",round(odata$pred.slope.lo,2),", ",round(odata$pred.slope.up,2), ")")
     
     pred <- data.frame("Time"=odata$Time, "Prediction"=odata$pred, "CI"=odata$pred.CI)
-    pred$CI[1] <- ""
     colnames(pred) <- c("Year", "Prediction","95% Confidence interval")
    
     slope <- data.frame("Slope"=odata$pred.slope[1], "CI"=odata$slope.CI[1])
@@ -156,6 +130,8 @@ shinyServer(function(input, output, session) {
      return(list("pred"=pred, "slope"=slope, "prob"=odata$pred.prob[1]))
   })
   
+  
+  # ===== Input table =======
   makeInputTable <- eventReactive(input$goButton, {
     idata <- inputdata()
     idata <- data.frame(idata)[,-c(1,2,3)]
@@ -163,28 +139,19 @@ shinyServer(function(input, output, session) {
     idata$BL_smoking <- ifelse(idata$BL_smoking==1, "ever", "never")
     idata$BL_sex <- ifelse(idata$BL_sex==1, "female", "male")
     
-    if(input$add_pred==2){
-      idemo <- data.frame("General"=c("Baseline eGFR", "Sex", "Age", "BMI", "Smoking"), 
-                          "Values"=unlist(idata[,c("FU_eGFR_epi", "BL_sex", "BL_age", "BL_bmi", "BL_smoking")]))
-      imed <- data.frame("Medication"=c("Glucose-lowering", "Blood pressure-lowering", "Lipid-lowering"), 
-                         "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
-      ilab <- data.frame("Laboratory"=c("Hemoglobin", "Mean arterial pressure",  "Hba1C", "Serum cholesterol", "log-2 UACR"), 
-                         "Values"=unlist(idata[,c("BL_hemo", "BL_map", "BL_hba1c", "BL_serumchol", "BL_uacr_log2")]))
+    idemo <- data.frame("General"=c("Baseline eGFR", "Sex", "Age", "BMI", "Smoking"), 
+                        "Values"=unlist(idata[,c("FU_eGFR_epi", "BL_sex", "BL_age", "BL_bmi", "BL_smoking")]))
+    imed <- data.frame("Medication"=c("Glucose-lowering", "Blood pressure-lowering", "Lipid-lowering"), 
+                       "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
+    ilab <- data.frame("Laboratory"=c("Hemoglobin", "Mean arterial pressure",  "Hba1C", "Serum cholesterol", "log-2 UACR"), 
+                       "Values"=unlist(idata[,c("BL_hemo", "BL_map", "BL_hba1c", "BL_serumchol", "BL_uacr_log2")]))
 
-      return(list("idemo"=idemo,"ilab"=ilab,"imed"=imed))
-    }
-    else{
-      idemo <- data.frame("General"=c("Baseline eGFR", "Sex", "Age", "BMI", "Smoking"), 
-                          "Values"=unlist(idata[,c("FU_eGFR_epi","BL_sex", "BL_age", "BL_bmi", "BL_smoking")]))
-      imed <- data.frame("Medication"=c("Glucose-lowering", "Blood pressure-lowering", "Lipid-lowering"), 
-                         "Values"=unlist(idata[,c("BL_med_dm", "BL_med_bp", "BL_med_lipid")]))
-      
-      return(list("idemo"=idemo,"imed"=imed))
-    }
+    return(list("idemo"=idemo,"ilab"=ilab,"imed"=imed))
+
     
   })
   
-  # ---------- Execute --------------------------------------------------------
+  # ================= Text chunks ===================================
   text_risk1 <- eventReactive(input$goButton, {  
     paste("Based on the provided information and a slope cutpoint of ", input$cutpoint," mL/min/1.73m², 
           the patient's probability of rapid decline in kidney function is ",  
@@ -202,17 +169,10 @@ shinyServer(function(input, output, session) {
   plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"pred.prob"]*100,2))})
   
   text_data <- eventReactive(input$goButton,{
-    if(input$add_pred==2){
       HTML(paste0("The tables below contain both the patient information given and the predictions resulting from the model, including 95% prediction intervals for the individual time points. The patient's probability of progression to fast kidney function decline is also given."))
-      
-    }else{
-      HTML(paste("The tables below contain both the patient information given and the predictions resulting from the model, including 95% prediction intervals for the individual time points. The patient's probability of progression to fast kidney function decline is also given.", 
-            "By selecting the simple model, the average laboratory measurements of the development cohort were used to calculate the prediction values and the risk estimate. This can skew the accuracy and precision of the estimates.", 
-            sep="<br/>"))
-    }
   })
   
-  # ------- Output ------------------------------
+  # ============= Output chunks ====================================
   output$text_risk1 <- renderText({
     text_risk1()
   })
@@ -243,9 +203,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$table_new2 <- renderTable({
-    if(input$add_pred==2){
-      makeInputTable()$ilab}
-    else{return()}
+      makeInputTable()$ilab
   })
   
   output$table_new3 <- renderTable({
@@ -260,9 +218,8 @@ shinyServer(function(input, output, session) {
     makeOutputTable()$slope
   })
 
-
   
-  # Reset
+  # =======  Reset =============
   observeEvent(input$reset_input, {
     updateNumericInput(session, "BL_age", value = 65)
     updateRadioButtons(session, "BL_sex", selected = "female")

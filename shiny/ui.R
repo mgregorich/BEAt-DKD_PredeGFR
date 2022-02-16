@@ -7,18 +7,24 @@
 
 
 # -------------------- SHINY User Interface  ---------------------------
+corner_element = HTML(paste0('<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>'))
 
-navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"), 
+navbarPage(corner_element, 
+           windowTitle = "BEAt-DKD | Prediction model",
            theme = shinythemes::shinytheme("spacelab"),
            tabPanel(title="Home",
                     fluidPage(
                       h1(id="big-heading" ,"Web implementation of the prediction model for kidney function in individuals with type 2 diabetes mellitus"),
                       
-                      h4(id="text1", "Decline of kidney function is a prevalent issue in people with type 2 diabetes mellitus. Diagnostic tools facilitate continuous monitoring of disease progression and allow to identify people with an increased risk for kidney function decline over the next few years."),
-                      h4(id="text1", "This prediction model for future eGFR has been developed for people:"),
-                      h4(id="text1", HTML("<ul><li>with diabetes mellitus type 2,</li><li>aged between 18 to 75 years, and</li><li>with a current estimated glomerular filtration rate (eGFR) above 30 mL/min/1.73m². </li></ul>")),
+                      h4(id="text1", "Chronic kidney disease (CKD) is a prevalent issue in people with type 2 diabetes mellitus. In practice, the kidney function is essentially monitored by 
+                         measuring the patient's estimated globular filtration rate (eGFR) over time. Diagnostic tools may facilitate continuous monitoring of disease progression and allow to identify people with 
+                         an increased risk for kidney function decline over the next few years."),
+                      h4(id="text1", "The prediction model for the future eGFR trajectory has been developed for people:"),
+                      h4(id="text1", HTML("<ul><li>with diabetes mellitus type 2,</li><li>aged between 18 to 75 years, and</li><li>with a current eGFR above 30 mL/min/1.73m². </li></ul>")),
+                      h4(id="text1", "    "),
                       h4(id="text1", "Users of this tool are urged to read the disclaimer carefully."),
-
+                      h4(id="text1", "    "),
+                      
                       
                       h4(id="text4","Disclaimer:"),
                       h4(id="text3", "Users of the prediction tool should not rely on information provided by the prediction tool for their own health problems. Questions should be addressed to the treating physician or other healthcare providers."),
@@ -46,6 +52,23 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                padding-right: 2.5%;
                                padding-left:2.5%
                                }"),
+                          HTML("#text10{color: #1476CB;
+                               font-size: 16px;
+                               line-height: 1.5em;
+                               font-weight: bold;
+                               border: 2px double white;
+                               background-color: white;
+                               padding-right: 2.5%;
+                               padding-left:2.5%
+                               }"),
+                          HTML("#text11{color: black;
+                               font-size: 14px;
+                               line-height: 1.5em;
+                               border: 2px double white;
+                               background-color: white;
+                               padding-right: 2.5%;
+                               padding-left:2.5%
+                               }"),
                           HTML("#text2{color: #1476CB;
                                font-weight: bold;
                                font-size: 18px;
@@ -61,7 +84,7 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                padding-top: 7.5%;
                                white-space: pre-wrap;
                                }"),
-                          HTML("#text0{color: #1165AE;
+                          HTML("#text0{color: #1476CB;
                                font-weight: bold;
                                font-size: 18px;
                                line-height: 1.5em;
@@ -69,7 +92,7 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                white-space: pre-wrap;
                                }"),
                           HTML("#text3{color: black;
-                               font-size: 12px;
+                               font-size: 14px;
                                line-height: 1.5em;
                                border: 2px double white;
                                background-color: white;
@@ -79,7 +102,7 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                }"),
                           HTML("#text4{color: black;
                                font-weight: bold;
-                               font-size: 12px;
+                               font-size: 14px;
                                line-height: 1.5em;
                                margin-top: 5px;
                                }"),
@@ -94,7 +117,7 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                           padding-top:2.55%;
                           padding-bottom:2.5%},
                           #border2 {
-                          border: 2px dashed blue;}")
+                          padding-top:15%;}")
                         )
                       ), 
                       
@@ -110,12 +133,9 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                  .checkbox-inline, .radio-inline {margin-bottom: 2px; margin-top: 2px;}")
                                ),
                                column(4,id="basic1",
-                                      fluidRow(id="border1",
-                                               column(4,h4(id="text0","Choose Model: ")),
-                                               column(5,h4(radioButtons("add_pred", "", 
-                                                                     choices = c("Simple" = 1, 
-                                                                                 "Extended" = 2),
-                                                                     selected = 1, inline = T)))),
+                                      fluidRow(id="border1",align="center",
+                                               h4(id="text0","Insert your information below.")),
+                 
                                       h4(""),
                                       fluidRow(id="border1",
                                         column(6,id="basic1", 
@@ -132,7 +152,7 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                                shinyWidgets::prettyCheckbox("BL_med_bp", "Blood pressure-lowering", status = "primary"),
                                                shinyWidgets::prettyCheckbox("BL_med_lipid", "Lipid-lowering", status = "primary"),
                                                shinyWidgets::prettyCheckbox("BL_med_dm", "Glucose-lowering", status = "primary")),
-                                        column(6,id="basic1", shinyjs::hidden(
+                                        column(6,id="basic1",
                                                  fluidRow(id="lab1",
                                                           h4(id="text2", "Laboratory:"),
                                                           h5(div(style="margin:5px;",shinyWidgets::numericInputIcon("BL_hemo", "Hemoglobin (g/dL):",value=15, min=9, max=19))), 
@@ -141,7 +161,7 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                                           h5(div(style="margin:5px;",shinyWidgets::numericInputIcon("BL_hba1c", "Hba1C (mmol/mol):", value=62, min=32, max=94))),
                                                           h5(div(style="margin:5px;",shinyWidgets::numericInputIcon("BL_serumchol", "Serum cholesterol (mg/dL):", value=130, min=98, max=329))),
                                                           h5(div(style="margin:5px;",shinyWidgets::numericInputIcon("BL_uacr", "Urinary albumin-creatinine ratio (mg/g):", value=10, min=0.04, max=2550)))
-                                                 )))),
+                                                 ))),
                                       h4(""),
                                       fluidRow(align="center", id="border1",
                                         column(5,h5(div(style="color: #1165AE;margin-top:-15px;width=400px", shinyWidgets::numericInputIcon("BL_eGFR", "Baseline eGFR (mL/min/1.73m²):",value=70, min=29, max=146, width="50%")))),
@@ -155,13 +175,13 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
                                       
                                       # Output: Histogram ----
                                       tabsetPanel(
+                                        tabPanel("Longitudinal",
+                                                 h4(id="text1", textOutput("text_longitudinal")),
+                                                 plotOutput("plot_trajectory", height="500px", width="700px")),
                                         tabPanel("Risk", 
                                                  h4(id="text1", textOutput("text_risk1")),
                                                  h4(id="text1", textOutput("text_risk2")),
                                                  plotOutput("plot_risk", height="400px", width="400px")),
-                                        tabPanel("Longitudinal",
-                                                 h4(id="text1", textOutput("text_longitudinal")),
-                                                 plotOutput("plot_trajectory", height="500px", width="700px")),
                                         tabPanel("Data", 
                                                  fluidRow(
                                           h4(id="text1", htmlOutput("text_data")),
@@ -193,18 +213,27 @@ navbarPage(title=HTML("<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>"),
            tabPanel(title="About",
                     fluidPage(
                       h3(id="text2", "Details"),
-                      h4(id="text1", "The web tool is the online implementation of the prediction model for kidney function in individuals with type 2 diabetes mellitus in (1)."),
+                      h4(id="text1", "The web tool is the online implementation of the prediction model for kidney function in individuals with type 2 diabetes mellitus presented in (1) and (2)."),
                       h3(id="text1", "   "),
                       h3(id="text2", "Contact"),
-                      h4(id="text1", "Mariella Gregorich (Section for Clinical Biometrics, Center for Medical Statistics, Informatics and Intelligent Systems, Medical University of Vienna)"),
-                      h4(id="text1", "Email: mariella.gregorich@meduniwien.ac.at"),
-                      h4(id="text1", "Rainer Oberbauer (Division of Nephrology and Dialysis, Department of Medicine III, Medical University of Vienna, Vienna, Austria)"),
-                      h4(id="text1", "Email: rainer.oberbauer@meduniwien.ac.at"),
-                      h3(id="text2", "Corresponding papers"),
-                      h3(id="text1", "   "),
+                      h4(id="text10", "For technical inquiries:"),
                       
-                      h4(id="text1", "(1) Gregorich, M., Heinzel, A., Kammer, M., Meiselbach, H., Böger, C., Eckardt, K. U., ... & Oberbauer, R. (2022). Individual-specific prediction of future eGFR in people with type 2 diabetes mellitus: development and external validation (in submission)"),
-                      h4(id="text1", "(2) Gregorich, M., Heinzel, A., Kammer, M., Meiselbach, H., Böger, C., Eckardt, K. U., ... & Oberbauer, R. (2021). A prediction model for the decline in renal function in people with type 2 diabetes mellitus: study protocol. Diagnostic and Prognostic Research, 5(1), 1-9."),
+                      h4(id="text1", "Mariella Gregorich (Section for Clinical Biometrics, Center for Medical Statistics, Informatics and Intelligent Systems, Medical University of Vienna)"),
+                      h4(id="text1", "Email:" ,a("mariella.gregorich@meduniwien.ac.at", href="mailto:mariella.gregorich@meduniwien.ac.at")),
+                      h3(id="text1", "   "),
+                      h4(id="text10", "For content-related inquiries:"),
+                      h4(id="text1", "Rainer Oberbauer (Division of Nephrology and Dialysis, Department of Medicine III, Medical University of Vienna, Vienna, Austria)"),
+                      h4(id="text1", "Email:" ,a("rainer.oberbauer@meduniwien.ac.at", href="mailto:rainer.oberbauer@meduniwien.ac.at")),
+                      h3(id="text1", "   "),
+                  
+                      h3(id="text2", "Funding"),
+                      h4(id="text1", "The research leading to these results has received support from the Innovative Medicines Initiative Undertaking under grant agreement no. 115974 BEAt-DKD. "),
+                      h3(id="text1", "   "),
+                      h3(id="text2", "References"),
+                      
+                      h4(id="text1", "(1) Gregorich, M., Heinzel, A., Kammer, M., Meiselbach, H., Böger, C., Eckardt, K. U., Mayer, G., Heinze, G. & Oberbauer, R. (2022). Individual-specific prediction of future eGFR in people with type 2 diabetes mellitus: development and external validation (in submission)"),
+                      h4(id="text1", "(2) Gregorich, M., Heinzel, A., Kammer, M., Meiselbach, H., Böger, C., Eckardt, K. U., Mayer, G., Heinze, G. & Oberbauer, R. (2021). A prediction model for the decline in renal function in people with type 2 diabetes mellitus: study protocol. Diagnostic and Prognostic Research, 5(1), 1-9.")
+                      
 
 
  )
