@@ -39,7 +39,7 @@ data.all %>%
 data.full %>% group_by(PatID) %>% summarise(maxT=max(Time_cont, na.rm=T)) %>% pull(maxT) %>% summary()
 
 # Histogram of all baseline variables
-par(mfrow = c(3,5))
+par(mfrow=c(1,1))
 hist(data.full[data.full$Time_cont==0,]$BL_age, col="grey", xlab=NULL, main = "Age [years]")
 barplot(table(data.full[data.full$Time_cont==0,]$BL_sex), ylab = "Frequency", main = "Gender [1=female]")
 hist(data.full[data.full$Time_cont==0,]$BL_bmi, col="grey", xlab=NULL, main = "BMI [kg/m]")
@@ -58,7 +58,7 @@ barplot(table(data.full[data.full$Time_cont==0,]$BL_med_lipid), ylab = "Frequenc
 
 
 # Histograms per time point for eGFR
-par(mfrow = c(2,4))
+par(mfrow=c(1,1))
 data.full %>% filter(Time_cat==0) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=0", xlab=NULL) 
 data.full %>% filter(Time_cat==1) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=1", xlab=NULL) 
 data.full %>% filter(Time_cat==2) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=2", xlab=NULL) 
@@ -66,7 +66,6 @@ data.full %>% filter(Time_cat==3) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR -
 data.full %>% filter(Time_cat==4) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=4", xlab=NULL) 
 data.full %>% filter(Time_cat==5) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=5", xlab=NULL) 
 data.full %>% filter(Time_cat==6) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=6", xlab=NULL) 
-par(mfrow = c(1,1))
 
 
 # ======================= Correlation heatmap ===================================
@@ -135,7 +134,7 @@ summary(data.full[data.full$Cohort==1,]$true.slope)
 summary(data.diacore$true.slope)
 
 
-# --- Average years of follow-up
+# --- Average years of follow-up ----
 
 tmp <- data.full %>%
   group_by(PatID) %>%
@@ -182,11 +181,11 @@ Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
 
 # Strafied by cohort
 data.tmp <- data.full[data.full$Time_cat==0,]
-table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_sysdia", "BL_bpdia"), strata="Cohort", test=F)))
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia"), strata="Cohort", test=F)))
 table1_dev <- data.frame(names=row.names(table1), table1) 
 
 data.tmp <- data.diacore[data.diacore$Time_cat == 0,]
-table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_sysdia", "BL_bpdia"), test=F)))
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia"), test=F)))
 table1_val <- data.frame(names=row.names(table1), table1) 
 
 table1_all <- full_join(table1_dev, table1_val, by="names") %>%
@@ -196,6 +195,13 @@ write.xlsx(table1_all, paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
 # For the development cohort in total
 data.tmp <- data.full[data.full$Time_cat==0,]
 CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), test=F)
+
+
+# ========================= Median rate of eGFR decline ===========================
+
+summary(data.full[data.full$Time_cat==0 & data.full$Cohort==1,]$true.slope)  #PROVALID
+summary(data.full[data.full$Time_cat==0 & data.full$Cohort==0,]$true.slope) #GCKD
+summary(data.diacore[data.diacore$Time_cat==0,]$true.slope)
 
 
 # =============================== Sample size calculation ======================

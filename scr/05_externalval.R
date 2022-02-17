@@ -28,7 +28,7 @@ res <- update_PredByBase(lmerObject=risk_model,
 
 # Summarize and prepare output
 data.diacore$Time <- round(data.diacore$Time,0)
-data.diacore.new <- full_join(data.diacore, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
+data.diacore.new <- full_join(data.diacore, res[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
 
 
 
@@ -79,7 +79,7 @@ res_ext_boot <- future_lapply(1:b, function(x){
                            newdata=data.boot.t0,
                            cutpoint = slope_cutpoint,
                            timeVar = "Time", idVar="PatID", idVar2="Country",
-                           times =seq(1,8,1), 
+                           times =seq(0,8,1), 
                            all_times=F)
   data.boot$Time <- data.boot$Time_cat
   data.boot.new <- full_join(data.boot, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
@@ -94,6 +94,7 @@ res_ext_boot <- future_lapply(1:b, function(x){
 plan(sequential)
 
 df.stats <- data.frame(do.call(rbind, res_ext_boot))
+
 
 
 # Summarize and prepare output

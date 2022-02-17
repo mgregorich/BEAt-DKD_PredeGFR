@@ -122,10 +122,10 @@ shinyServer(function(input, output, session) {
     odata$slope.CI <- paste0("(",round(odata$pred.slope.lo,2),", ",round(odata$pred.slope.up,2), ")")
     
     pred <- data.frame("Time"=odata$Time, "Prediction"=odata$pred, "CI"=odata$pred.CI)
-    colnames(pred) <- c("Year", "Prediction","95% Confidence interval")
+    colnames(pred) <- c("Year", "Prediction","95% Prediction interval")
    
     slope <- data.frame("Slope"=odata$pred.slope[1], "CI"=odata$slope.CI[1])
-    colnames(slope) <- c("eGFR slope", "95% Confidence interval")
+    colnames(slope) <- c("eGFR slope", "95% Prediction interval")
 
      return(list("pred"=pred, "slope"=slope, "prob"=odata$pred.prob[1]))
   })
@@ -163,7 +163,7 @@ shinyServer(function(input, output, session) {
   })
   
   text_longitudinal <- eventReactive(input$goButton, {  
-    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corrsponding 95% confidence interval given the provided information. The observed baseline eGFR of the patient is indicated in red.", sep="" )
+    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corrsponding 95% prediction interval given the provided information. The observed baseline eGFR of the patient is indicated in red.", sep="" )
   })
   
   plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"pred.prob"]*100,2))})

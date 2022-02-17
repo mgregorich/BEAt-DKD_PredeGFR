@@ -236,13 +236,13 @@ df <- mutate(df, Group = fct_rev(Group))
 df$variable <- as.factor(str_replace(df$variable, "Time:", ""))
 df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_sex1","BL_bmi","BL_smoking1","BL_map","BL_hba1c","BL_serumchol", "BL_hemo",
                                             "BL_uacr_log2", "BL_med_dm1","BL_med_bp1","BL_med_lipid1"))
-levels(df$variable) <- list("Intercept"="(Intercept)","Time"="Time", Age  = "BL_age", "Sex (female)" = "BL_sex1", BMI="BL_bmi", "Smoking (ever)"="BL_smoking1", MAP="BL_map", Hba1C="BL_hba1c",
+levels(df$variable) <- list("Intercept"="(Intercept)","Time"="Time", Age  = "BL_age", "Sex (female)" = "BL_sex1", BMI="BL_bmi", "Smoking (ever)"="BL_smoking1", MAP="BL_map", HbA1c="BL_hba1c",
                             "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", "Glucose-low. Med."="BL_med_dm1", "Blood pressure-low. Med."="BL_med_bp1", "Lipid-low. Med."="BL_med_lipid1")
 
 
 df[,2:4] <- apply(df[,2:4],2, round, digits=3)
 df$name <- rownames(df)
-df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hba1c","Serum chol.",
+df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "HbA1c","Serum chol.",
                                           "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
 df$CI <- paste0("(",df$lower,", " ,df$upper,")")
 tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$name, "Time"),c(2,8)])
@@ -269,12 +269,12 @@ df <- mutate(df, Group = fct_rev(Group))
 df$variable <- as.factor(str_replace(df$variable, "Time:", ""))
 df$variable <- factor(df$variable, levels=c("(Intercept)","Time","BL_age","BL_sex1","BL_bmi","BL_smoking1","BL_map","BL_hba1c","BL_serumchol", "BL_hemo",
                                             "BL_uacr_log2", "BL_med_dm1","BL_med_bp1","BL_med_lipid1"))
-levels(df$variable) <- list("Intercept"="(Intercept)","Time"="Time", Age  = "BL_age", "Sex (female)" = "BL_sex1", BMI="BL_bmi", "Smoking (ever)"="BL_smoking1", MAP="BL_map", Hba1C="BL_hba1c",
+levels(df$variable) <- list("Intercept"="(Intercept)","Time"="Time", Age  = "BL_age", "Sex (female)" = "BL_sex1", BMI="BL_bmi", "Smoking (ever)"="BL_smoking1", MAP="BL_map", HbA1c="BL_hba1c",
                             "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", "Glucose-low. Med."="BL_med_dm1", "Blood pressure-low. Med."="BL_med_bp1", "Lipid-low. Med."="BL_med_lipid1")
 
 df[,2:4] <- apply(df[,2:4],2, round, digits=3)
 df$name <- rownames(df)
-df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "Hba1c","Serum chol.",
+df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP", "HbA1c","Serum chol.",
                                           "Hemoglobin", "log2UACR", "GL Med.", "BPL Med.","LL Med."),2))
 df$CI <- paste0("(",df$lower,", " ,df$upper,")")
 tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$name, "Time"),c(2,8)])
@@ -354,7 +354,7 @@ write.xlsx(tbl_partialR2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = T)
 # --- Visualization
 tbl_partR2 <- read.xlsx(paste0(out.path, "tbl_partialR2.xlsx"))
 tbl_partR2$term <- as.factor(tbl_partR2$term)
-levels(tbl_partR2$term) <- list("Full Model"="Full",Age  = "BL_age", "Sex" = "BL_sex", BMI="BL_bmi", "Smoking"="BL_smoking", MAP="BL_map", Hba1C="BL_hba1c",
+levels(tbl_partR2$term) <- list("Full Model"="Full",Age  = "BL_age", "Sex" = "BL_sex", BMI="BL_bmi", "Smoking"="BL_smoking", MAP="BL_map", HbA1c="BL_hba1c",
                                 "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", 
                                 "Glucose-low. Med."="BL_med_dm", "Blood pressure-low. Med."="BL_med_bp", "Lipid-low. Med."="BL_med_lipid")
 tmp1 <- tbl_partR2[,c("term","R2m", "R2m.lo", "R2m.up")]
