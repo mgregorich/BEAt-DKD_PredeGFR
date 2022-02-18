@@ -57,22 +57,20 @@ shinyServer(function(input, output, session) {
     footer = modalButton("Cancel")
   )
   showModal(query_modal)
-
-
+  
+  # ===== Display message when switching to model tab =====
+  observeEvent(input$tabselected, {
+    if (input$tabselected == "Model") 
+      shinyalert::shinyalert("Info", "The presented results are only for informative purposes and do not replace medical consultation!", type = "warning")  
+  })
+  
   # ===== Check input values ======
   observeEvent(input$goButton, {
-    if (iv$is_valid()) {
-
-      shinyalert::shinyalert("Info", "The presented results are only for informative purposes and do not replace medical consultation!", type = "warning")
-      
-    } else {
+    if (!iv$is_valid()) {
       iv$enable() # Start showing validation feedback
-      
       shinyalert::shinyalert("Oops!", "Please correct the errors indicated in red in the form and try again.", type = "error")
-
     }
   })
-
   
   ## ====== INPUT ================
   inputdata <- eventReactive(input$goButton ,{

@@ -10,6 +10,7 @@
 corner_element = HTML(paste0('<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>'))
 
 navbarPage(corner_element, 
+           id = "tabselected",
            windowTitle = "BEAt-DKD | Prediction model",
            theme = shinythemes::shinytheme("spacelab"),
            tabPanel(title="Home",
