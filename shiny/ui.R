@@ -10,6 +10,7 @@
 corner_element = HTML(paste0('<a href=\"https://www.beat-dkd.eu/\">BEAt-DKD</a>'))
 
 navbarPage(corner_element, 
+           id = "tabselected",
            windowTitle = "BEAt-DKD | Prediction model",
            theme = shinythemes::shinytheme("spacelab"),
            tabPanel(title="Home",
@@ -167,7 +168,22 @@ navbarPage(corner_element,
                                         column(5,h5(div(style="color: #1165AE;margin-top:-15px;width=400px", shinyWidgets::numericInputIcon("BL_eGFR", "Baseline eGFR (mL/min/1.73m²):",value=70, min=29, max=146, width="50%")))),
                                         column(6,h5(div(style="color: #1165AE;margin-top:-15px;width=400px", shinyWidgets::numericInputIcon("cutpoint", "eGFR cutpoint to classify stable and fast progression:", value=-3, min=-6, max=1)))),
                                         
-                                      )
+                                      ), 
+                                      fluidRow(
+                                        h2(""),
+                                        column(12,)
+                                      ),
+                                      fluidRow( 
+                                        splitLayout(cellWidths = c("10%", "15%", "15%"),
+                                          column(1,),
+                                          actionButton("goButton", "Compute"),
+                                          actionButton("reset_input", "Reset")
+                                        )
+                                      ),
+                                      fluidRow(
+                                        h2(""),
+                                        column(12,)
+                                      ),
                                       ),
                                # Main panel for displaying outputs ----
                                column(8,
@@ -199,14 +215,6 @@ navbarPage(corner_element,
                                         
                                       )
                                ),
-                      ),
-                      fluidRow(
-                        column(2, align="right", actionButton("goButton", "Compute")),
-                        column(2, align="left", actionButton("reset_input", "Reset")),
-                        column(8,)),
-                      fluidRow(
-                        hr(),
-                        column(12,)
                       )
                     )
            ),

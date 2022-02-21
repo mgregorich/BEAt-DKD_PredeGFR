@@ -57,22 +57,20 @@ shinyServer(function(input, output, session) {
     footer = modalButton("Cancel")
   )
   showModal(query_modal)
-
-
+  
+  # ===== Display message when switching to model tab =====
+  observeEvent(input$tabselected, {
+    if (input$tabselected == "Model") 
+      shinyalert::shinyalert("Info", "The presented results are only for informative purposes and do not replace medical consultation!", type = "warning")  
+  })
+  
   # ===== Check input values ======
   observeEvent(input$goButton, {
-    if (iv$is_valid()) {
-
-      shinyalert::shinyalert("Info", "The presented results are only for informative purposes and do not replace medical consultation!", type = "warning")
-      
-    } else {
+    if (!iv$is_valid()) {
       iv$enable() # Start showing validation feedback
-      
       shinyalert::shinyalert("Oops!", "Please correct the errors indicated in red in the form and try again.", type = "error")
-
     }
   })
-
   
   ## ====== INPUT ================
   inputdata <- eventReactive(input$goButton ,{
@@ -129,7 +127,6 @@ shinyServer(function(input, output, session) {
 
      return(list("pred"=pred, "slope"=slope, "prob"=odata$pred.prob[1]))
   })
-  
   
   # ===== Input table =======
   makeInputTable <- eventReactive(input$goButton, {
@@ -222,9 +219,9 @@ shinyServer(function(input, output, session) {
   # =======  Reset =============
   observeEvent(input$reset_input, {
     updateNumericInput(session, "BL_age", value = 65)
-    updateRadioButtons(session, "BL_sex", selected = "female")
-    updateNumericInput(session, "BL_bmi", value=25)
-    updateRadioButtons(session, "BL_smoking", selected = "never")
+    updateRadioButtons(session, "BL_sex", selected = 1)
+    updateNumericInput(session, "BL_bmi", value = 25)
+    updateRadioButtons(session, "BL_smoking", selected = 0)
     
     updateNumericInput(session, "BL_hba1c", value = 62)
     updateNumericInput(session, "BL_serumchol", value = 130)
@@ -233,13 +230,10 @@ shinyServer(function(input, output, session) {
     updateNumericInput(session, "BL_hemo", value = 15)
     updateNumericInput(session, "BL_uacr", value = 10)
     updateNumericInput(session, "BL_eGFR", value = 70)
+    updateNumericInput(session, "cutpoint", value = -3)
 
-    updateCheckboxInput(session, "BL_med_bp", value=F)
-    updateCheckboxInput(session, "BL_med_dm", value=T)
-    updateCheckboxInput(session, "BL_med_lipid", value=F)
-    
-    
+    updateCheckboxInput(session, "BL_med_bp", value = FALSE)
+    updateCheckboxInput(session, "BL_med_dm", value = FALSE)
+    updateCheckboxInput(session, "BL_med_lipid", value = FALSE)
   })
 })
-  
-
