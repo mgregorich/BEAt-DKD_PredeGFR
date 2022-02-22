@@ -31,6 +31,11 @@ navbarPage(corner_element,
                       h4(id="text3", "The authors make no warranties, nor expressed or implied representations whatsoever, regarding the accuracy, completeness, timeliness, comparative or controversial nature, or usefulness of any information contained or referenced in the prediction tool. The authors do not assume any risk whatsoever for the use of the prediction tool or the information contained herein. Health related information changes frequently and therefore information contained in the prediction tool may be outdated, incomplete or incorrect."),
                       h4(id="text3", "Use of the prediction tool does not create an expressed or implied physician-patient relationship. The authors do not endorse or claim validity for the prediction tool found on this webpage. This web tool does not record specific prediction tool user information and does not contact users of the prediction tools."),
                       h4(id="text3", "You are hereby advised to consult with a physician or other professional healthcare provider prior to making any decisions, or undertaking any actions or not undertaking any actions related to any healthcare problem or issue you might have at any time, now or in the future. In using the prediction tool, you agree that neither the authors nor any other party is or will be liable or otherwise responsible for any decision made or any action taken or any action not taken due to your use of any information presented in the prediction tool.")
+                    ), 
+                    hr(),
+                    div(
+                      class = "footer",
+                      includeHTML("footer.html")
                     )
            ),
            tabPanel(title="Model",
