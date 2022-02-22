@@ -167,7 +167,7 @@ shinyServer(function(input, output, session) {
   
   text_risk3 <- eventReactive(input$goButton, {
     paste("The graph below shows the distribution of the predicted eGFR curves in the development cohort with which the prediction model was developed. 
-          The red line indicates the estimated eGFR curve associated with the input data and illustrates how the predicted eGFR curve compares to the distribution seen in
+          The red line indicates the predicted eGFR slope associated with the input data and illustrates how the predicted eGFR slope of the new individual compares to the distribution seen in
           the development cohort.", sep="" )
   })
   
@@ -186,7 +186,7 @@ shinyServer(function(input, output, session) {
   })
   
   text_longitudinal <- eventReactive(input$goButton, {  
-    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corrsponding 95% prediction interval given the provided information. The observed baseline eGFR of the patient is indicated in red.", sep="" )
+    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corresponding 95% prediction interval given the provided information. The observed baseline eGFR of the patient is indicated in red.", sep="" )
   })
   
   

@@ -53,19 +53,19 @@ readJSON <- function(file) {
 
 plot_eGFRslopeDistribution <- function(distr.slopes, dens.slopes, pred.slope){
   
-  p <- ggplot(dens.slopes, aes(x=x, y=y)) +
-    geom_line() +
-    scale_y_continuous("Density", expand=c(0,0), lim=c(0,0.7), breaks = seq(0,0.7, 0.1)) +
-    scale_x_continuous("eGFR slope",lim=c(-5,2.5), breaks = seq(-5,2.5,1)) +
-    geom_area(alpha=0.1) +
-    geom_vline(xintercept = pred.slope, col="red3", linetype="dashed") +
-    geom_text(aes(x=pred.slope, label="Predicted slope", y=0.65), colour="red3", size=5) +
-    geom_segment(x = 0, y = 0, xend = 0, yend = 0.7, color = 1,
-                 arrow = arrow(length=unit(0.3,"cm"),)) +
-    theme_minimal() +
-    theme(axis.line.x = element_line(arrow = grid::arrow(length = unit(0.2, "cm"),ends = "both")),
-          text=element_text(size=18),
-          panel.grid.minor=element_blank())
+  p <- ggplot2::ggplot(dens.slopes, ggplot2::aes(x=x, y=y)) +
+    ggplot2::geom_line() +
+    ggplot2::scale_y_continuous("Density", expand=c(0,0), lim=c(0,0.7), breaks = seq(0,0.7, 0.1)) +
+    ggplot2::scale_x_continuous("eGFR slope",lim=c(-5,2.5), breaks = seq(-5,2.5,1)) +
+    ggplot2::geom_area(alpha=0.1) +
+    ggplot2::geom_vline(xintercept = pred.slope, col="red3", linetype="dashed") +
+    ggplot2::geom_text(ggplot2::aes(x=pred.slope, label="Predicted slope", y=0.65), colour="red3", size=5) +
+    ggplot2::geom_segment(x = 0, y = 0, xend = 0, yend = 0.7, color = 1,
+                 arrow = grid::arrow(length=grid::unit(0.3,"cm"),)) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(axis.line.x = ggplot2::element_line(arrow = grid::arrow(length = grid::unit(0.2, "cm"),ends = "both")),
+          text=ggplot2::element_text(size=18),
+          panel.grid.minor=ggplot2::element_blank())
   p
   prob <- distr.slopes[which.min(abs(distr.slopes$Value-pred.slope)),]$quantil
   

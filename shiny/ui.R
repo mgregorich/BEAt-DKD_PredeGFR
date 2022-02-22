@@ -174,11 +174,8 @@ navbarPage(corner_element,
                                         column(12,)
                                       ),
                                       fluidRow( 
-                                        splitLayout(cellWidths = c("10%", "15%", "15%"),
-                                          column(1,),
-                                          actionButton("goButton", "Compute"),
-                                          actionButton("reset_input", "Reset")
-                                        )
+                                        column(6, align="right", actionButton("goButton", "Compute")),
+                                        column(6, align="left", actionButton("reset_input", "Reset"))
                                       ),
                                       fluidRow(
                                         h2(""),
@@ -198,7 +195,9 @@ navbarPage(corner_element,
                                                  h4(id="text1", textOutput("text_risk1")),
                                                  h4(id="text1", textOutput("text_risk2")),
                                                  h4(id="text1", textOutput("text_risk3")),
-                                                 plotOutput("plot_slopedist", height="400px", width="700px"),
+                                                 fluidRow(align="center",
+                                                          plotOutput("plot_slopedist", height="400px", width="700px")
+                                                          ),
                                                  h4(id="text1", textOutput("text_risk4")),
                                         ),
                                         tabPanel("Data", 
