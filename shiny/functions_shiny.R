@@ -51,6 +51,27 @@ readJSON <- function(file) {
 
 # =============================== PLOTS ========================================
 
+plot_eGFRslopeDistribution <- function(distr.slopes, dens.slopes, pred.slope){
+  
+  p <- ggplot(dens.slopes, aes(x=x, y=y)) +
+    geom_line() +
+    scale_y_continuous("Density", expand=c(0,0), lim=c(0,0.7), breaks = seq(0,0.7, 0.1)) +
+    scale_x_continuous("eGFR slope",lim=c(-5,2.5), breaks = seq(-5,2.5,1)) +
+    geom_area(alpha=0.1) +
+    geom_vline(xintercept = pred.slope, col="red3", linetype="dashed") +
+    geom_text(aes(x=pred.slope, label="Predicted slope", y=0.65), colour="red3", size=5) +
+    geom_segment(x = 0, y = 0, xend = 0, yend = 0.7, color = 1,
+                 arrow = arrow(length=unit(0.3,"cm"),)) +
+    theme_minimal() +
+    theme(axis.line.x = element_line(arrow = grid::arrow(length = unit(0.2, "cm"),ends = "both")),
+          text=element_text(size=18),
+          panel.grid.minor=element_blank())
+  p
+  prob <- distr.slopes[which.min(abs(distr.slopes$Value-pred.slope)),]$quantil
+  
+  return(list("plot"=p, "prob"=prob))
+}
+
 plot_trajectory <- function(x){
   
   p1 <- ggplot2::ggplot(x, ggplot2::aes(x=Time, y=pred)) +
@@ -69,42 +90,6 @@ plot_trajectory <- function(x){
   return(p1)
 }
 
-smilegraph <- function(risk){
-  happy<-png::readPNG("www/happy.png")
-  sad<-png::readPNG("www/sad.png")
-  plot(0:10,0:10,ty="n", xlab="", ylab="")
-  
-  num<-round(risk)
-  
-  if(num==0){
-    for(i in 1:10){
-      for(j in 1:10) rasterImage(happy,j-1,i-1, j,i)  
-    }
-    
-  }else{
-    numy<-ceiling(num/10)
-    lastnum <- (num/10 - floor(num/10))*10
-    lastnum[lastnum==0]<-10
-    if(numy>1){ numx <- c(rep(10, numy-1),lastnum)}else{
-      numx <- lastnum
-    }
-    apply(as.matrix(1:numy),1, function(i) {
-      apply(as.matrix(1:numx[i]),1, function(j) rasterImage(sad,j-1,i-1,j,i))  
-    })
-    
-    numsad<-round(100-risk)
-    numsady<-ceiling(numsad/10)
-    lastnumsad <- (numsad/10 - floor(numsad/10))*10
-    lastnumsad[lastnumsad==0]<-10
-    if(numsady>1){ numsadx <- c(rep(10, numsady-1),lastnumsad)}else{
-      numsadx <- lastnumsad
-    }
-    apply(as.matrix(10:(11-numsady)),1, function(i){
-      index<- 11-i
-      apply(as.matrix(1:numsadx[index]),1,function(j) rasterImage(happy,10-j+1,i-1, 10-j,i) ) 
-    })
-  }
-}
 
 # ==================== PREDICTION UPDATE WITH BASELINE VALUES  =================
 

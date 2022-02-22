@@ -32,12 +32,23 @@ data.full$Time <- round(data.full$Time,0)
 data.preds <- full_join(data.full, res[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
 
 
-# ================== Internal validation  ======================
+# ================ Predicted eGFR slope distribution ==========================
+pred.slopes <- data.preds[duplicated(data.preds[,c("PatID", "pred.slope")]),]$pred.slope
+distr.slopes <- quantile(pred.slopes, seq(0,1,0.0025))
+dens.slopes <- data.frame("x"=density(pred.slopes)$x, "y"=density(pred.slopes)$y)
+dens.slopes <- dens.slopes[seq(1,nrow(dens.slopes),10),]
+distr.slopes <- data.frame("quantil"=names(distr.slopes), "Value"=distr.slopes, row.names=NULL) %>%
+  mutate(quantil=as.numeric(str_remove(quantil, "%")))
+
+
+# ================== Internal validation  =====================================
 
 # ---- (1) Save final model and extract components for shiny ----
 saveRDS(fit.final, paste0(out.path,"predmodel_lmerObject.rds"))
-
 pred_components <- extractLMER(fit.final, idVar = "PatID")
+pred_components$distr.slopes <- distr.slopes
+pred_components$dens.slopes <- dens.slopes
+
 saveRDS(pred_components, 
         file.path(shiny.path, "www/predmodel_shinyObject.rds"))
 saveJSON(pred_components, 

@@ -148,6 +148,12 @@ shinyServer(function(input, output, session) {
     
   })
   
+  plot_slopedist <- eventReactive(input$goButton, 
+                                  {plot_eGFRslopeDistribution(distr.slopes=pred_model$distr.slopes, 
+                                                              dens.slopes=pred_model$dens.slopes, 
+                                                              pred.slope=calc_out()[1,"pred.slope"])})
+  
+  
   # ================= Text chunks ===================================
   text_risk1 <- eventReactive(input$goButton, {  
     paste("Based on the provided information and a slope cutpoint of ", input$cutpoint," mL/min/1.73m², 
@@ -159,11 +165,30 @@ shinyServer(function(input, output, session) {
     paste("This means that in 100 people with these characteristics ",round(calc_out()[1,"pred.prob"]*100,0)," are expected to exhibit fast progression of kidney function decline in the following years.", sep="" )
   })
   
+  text_risk3 <- eventReactive(input$goButton, {
+    paste("The graph below shows the distribution of the predicted eGFR curves in the development cohort with which the prediction model was developed. 
+          The red line indicates the estimated eGFR curve associated with the input data and illustrates how the predicted eGFR curve compares to the distribution seen in
+          the development cohort.", sep="" )
+  })
+  
+  text_risk4 <- eventReactive(input$goButton, {
+    eGFR_prob = plot_slopedist()[["prob"]]
+    if(eGFR_prob < 40){
+      eGFR_pos <- "below average"
+    }else if(eGFR_prob > 60){
+      eGFR_pos <- "above average"
+    }else{
+      eGFR_pos <-"mid-range"
+    }
+    paste("The predicted eGFR curve has a slope of ",round(calc_out()[1,"pred.slope"],2)," (",round(calc_out()[1,"pred.slope.lo"],2),", ",round(calc_out()[1,"pred.slope.up"],2),"). This GFR slope is ",eGFR_pos," compared to the predicted eGFR slopes of the development cohort.
+          ",round(eGFR_prob,1),"% of the included individuals in the development cohort were below the predicted eGFR curve of ",
+          round(calc_out()[1,"pred.slope"],2),".", sep="" )
+  })
+  
   text_longitudinal <- eventReactive(input$goButton, {  
     paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corrsponding 95% prediction interval given the provided information. The observed baseline eGFR of the patient is indicated in red.", sep="" )
   })
   
-  plotsmile <- eventReactive(input$goButton, {smilegraph(round(calc_out()[1,"pred.prob"]*100,2))})
   
   text_data <- eventReactive(input$goButton,{
       HTML(paste0("The tables below contain both the patient information given and the predictions resulting from the model, including 95% prediction intervals for the individual time points. The patient's probability of progression to fast kidney function decline is also given."))
@@ -178,6 +203,14 @@ shinyServer(function(input, output, session) {
     text_risk2()
   })
   
+  output$text_risk3 <- renderText({
+    text_risk3()
+  })
+  
+  output$text_risk4 <- renderText({
+    text_risk4()
+  })
+  
   output$text_data <- renderText({
     text_data()
   })
@@ -186,13 +219,13 @@ shinyServer(function(input, output, session) {
     text_longitudinal()
   })
   
-  output$plot_risk <- renderPlot({ 
-    plotsmile()})
-  
-  
   output$plot_trajectory <- renderPlot({
     data.pred <- calc_out()
     plot_trajectory(data.pred)
+  })
+  
+  output$plot_slopedist <- renderPlot({
+    plot_slopedist()
   })
   
   output$table_new1 <- renderTable({
