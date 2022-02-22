@@ -269,4 +269,6 @@ shinyServer(function(input, output, session) {
     updateCheckboxInput(session, "BL_med_dm", value = FALSE)
     updateCheckboxInput(session, "BL_med_lipid", value = FALSE)
   })
+  session$onSessionEnded(stopApp) #automatically stop when closing browser
+  
 })
