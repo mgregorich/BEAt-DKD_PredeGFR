@@ -24,7 +24,4 @@ source("scr/04_eval.R", print.eval=F)
 # External validation
 source("scr/05_externalval.R", print.eval=F)
 
-# Run shiny app
-source("scr/06_shinyapp.R")
-
 
