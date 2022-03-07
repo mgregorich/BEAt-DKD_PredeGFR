@@ -18,6 +18,11 @@ The predictive model code is included to transparently report the model developm
 
 The shiny app can either be started by downloading the shiny folder and executing the code or can be accessed via [here](https://beatdkd.shinyapps.io/shiny/).
 
+``` r
+# install.packages("devtools")
+devtools::install_github("mgregorich/BEAt-DKD_PredeGFR")
+```
+
 
 ## Prerequisites
 
