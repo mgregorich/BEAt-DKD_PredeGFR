@@ -27,3 +27,7 @@ devtools::install_github("mgregorich/BEAt-DKD_PredeGFR")
 ## Prerequisites
 
 The code uses the statistical software `R` (>= 4.0) 
+
+## Acknowledgements
+
+This project (Biomarker Enterprise to Attack DKD - BeatDKD) received funding from the Innovative Medicines Initiative 2 Joint Undertaking under grant agreement 115974. This Joint Undertaking receives support from the European Union’s Horizon 2020 research and innovation programme, European Federation of Pharmaceutical Industries and Associations, and the Juvenile Diabetes Research Foundation. A full list of BeatDKD partners may be found on the website (https://www.beat-dkd.eu/). 
