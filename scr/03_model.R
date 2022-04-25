@@ -45,6 +45,7 @@ distr.slopes <- data.frame("quantil"=names(distr.slopes), "Value"=distr.slopes, 
 
 # ---- (1) Save final model and extract components for shiny ----
 saveRDS(fit.final, paste0(out.path,"predmodel_lmerObject.rds"))
+
 pred_components <- extractLMER(fit.final, idVar = "PatID")
 pred_components$distr.slopes <- distr.slopes
 pred_components$dens.slopes <- dens.slopes
@@ -54,6 +55,8 @@ saveRDS(pred_components,
 saveJSON(pred_components, 
          file.path(shiny.path,"www/predmodel_shinyObject.json"))
 
+# Model equation 
+# equatiomatic::extract_eq(fit.final)
 
 # ---- (2) Model parameter ----
 # summary(fit.final)
@@ -74,32 +77,13 @@ for(t in 1:7){
                         cohort="dev", time=t, save=F, out.path = out.path, type="preUp")
   #After update
   plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$pred, 
-                        cohort="dev", time=t, save=F, out.path = out.path, type="postUp")}
+                        cohort="dev", time=t, save=F, out.path = out.path, type="postUp")
+}
 
 
 # ---- (4) Residual check -----
-df_model <- augment(fit.final)
-df_model[".stdresid"] <- resid(fit.final, type = "pearson")
 
-p1 <- ggplot(df_model, aes(.fitted, .resid)) + 
-  geom_point() +
-  geom_hline(yintercept = 0) +
-  geom_smooth(method = "gam",se=T, formula = y ~ x) +
-  scale_x_continuous("Fitted Values") +
-  scale_y_continuous("Standardized Residuals") +
-  theme_bw() +
-  theme(text=element_text(size=16))
-
-p2 <- ggplot(df_model, aes(sample = .stdresid)) +
-  geom_qq() +
-  geom_qq_line() +
-  scale_x_continuous("Sample Quantiles") +
-  scale_y_continuous("Theoretical Quantiles") +
-  theme_bw() +
-  theme(text=element_text(size=16))
-
-p3<-grid.arrange(p1,p2)
-ggsave(paste0(out.path, "fig_residual_analysis.tiff"), plot=p3  ,width=10, height=6, device='tiff', dpi=350, compression = 'lzw')
+check_residuals(fit.final, filename = "fig_residual_analysis")
 
 
 # ---- (5) Linearity in each variables -----

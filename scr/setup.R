@@ -24,7 +24,7 @@ DIACORE.path = paste0(data.path, "DIACORE/")
 out.path = "../Output/"
 shiny.path = "./shiny"
 slope_cutpoint=-3
-nboot = 5
+nboot = 1000
 
 # Load auxiliary functions 
 source("scr/functions_aux.R")

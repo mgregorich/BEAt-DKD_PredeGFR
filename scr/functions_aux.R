@@ -124,6 +124,35 @@ c_index <- function(pred, obs){
   return(1-cindex(c.model))
 }
 
+check_residuals <- function(fit.model, filename="fig_residual_analysis"){
+  
+  df_model <- augment(fit.model)
+  df_model[".stdresid"] <- resid(fit.model, type = "pearson")
+  
+  p1 <- ggplot(df_model, aes(.fitted, .resid)) + 
+    geom_point() +
+    geom_hline(yintercept = 0) +
+    geom_smooth(method = "gam",se=T, formula = y ~ x) +
+    scale_x_continuous("Fitted Values") +
+    scale_y_continuous("Standardized Residuals") +
+    theme_bw() +
+    theme(text=element_text(size=16))
+  
+  p2 <- ggplot(df_model, aes(sample = .stdresid)) +
+    geom_qq() +
+    geom_qq_line() +
+    scale_x_continuous("Sample Quantiles") +
+    scale_y_continuous("Theoretical Quantiles") +
+    theme_bw() +
+    theme(text=element_text(size=16))
+  
+  p3<-grid.arrange(p1,p2)
+  ggsave(paste0(out.path, filename, ".tiff"), plot=p3  ,width=10, height=6, device='tiff', dpi=350, compression = 'lzw')
+  
+  return(p3)
+}
+
+
 eval_preds <- function(pred, obs, lmerObject){
   # x=data.test.list[[8]]; pred=x$pred; obs=x$FU_eGFR_epi; N=length(unique(fit.lme$data$PatID)); k=sum(anova(fit.lme)$numDF)
   
@@ -193,8 +222,21 @@ draw_bootstrap_sample <- function(data.tmp, cv=T){
 }
 
 
-intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
-  # data.boot=data.full; b.nr=NA; return_preds=T
+intext_crossvalidate <- function(data.boot, b.nr, return_preds=F, sa =F){
+  #' return_preds ... return predicted values
+  #' sa .... perform sensitivity analysis: exclude age and sex from model
+  #' b.nr ... bootstrap iteration for post-processing
+  #' data.boot ... bootstrapped data
+  #' 
+  # data.boot=data.full; b.nr=NA; return_preds=T; sa=F
+  
+  if(sa){ # formula for sensitivity analysis
+    lmer_formula <- as.formula("FU_eGFR_epi ~ (Time + Time  *(BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID))")
+  }else{ # formula of main analysis
+    lmer_formula <- as.formula("FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID))")
+    }
   
   df.pred <- df.res <- df.re <- list()
   c = length(unique(data.full$Country))
@@ -203,8 +245,7 @@ intext_crossvalidate <- function(data.boot, b.nr, return_preds=F){
     data.train <- data.boot[data.boot$fold != i, ] 
     data.test <- data.boot[data.boot$fold == i, ] 
     
-    fit.lmer <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
-                                                     BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
+    fit.lmer <- lmer(lmer_formula,
                      data=data.train, REML=F, control=lmerControl(optimizer="bobyqa"))
     
     # Update prediction with BL value

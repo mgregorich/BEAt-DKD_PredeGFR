@@ -38,12 +38,13 @@ for(t in 2:7){
   plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==t,]$prior.pred,
                         cohort="extval", time=t, save=T, out.path = out.path, type="preUp")
   plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==t,]$pred,
-                        cohort="extval", time=t, save=T, out.path = out.path, type="postUp")}
+                        cohort="extval", time=t, save=T, out.path = out.path, type="postUp")
+  }
 
 ggplot(data.diacore.new[data.diacore.new$Time_cat <=5,], aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
   geom_point() +
-  scale_x_continuous(expand = c(0, 0), name = "Predicted eGFR", limits = c(0,150)) + 
-  scale_y_continuous(expand = c(0, 0), name = "Observed EGFR", limits = c(0,150)) +
+  scale_x_continuous(expand = c(0, 0), name = expression(paste("Predicted eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) + 
+  scale_y_continuous(expand = c(0, 0), name = expression(paste("Observed eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) +
   scale_color_continuous("Time") +
   scale_fill_continuous("Time") +
   geom_abline(intercept = 0) + 
@@ -54,11 +55,12 @@ ggsave(paste0(out.path, "fig_calibration_all_diacore_post.tiff"),  width=8, heig
 df <- melt(data.diacore.new[data.diacore.new$Time_cat <=5 ,c("Time_cont","FU_eGFR_epi", "pred","prior.pred")], id.vars = c("Time_cont", "FU_eGFR_epi"))
 levels(df$variable) <- c("Post-update", "Pre-update")
 df$variable <- relevel(df$variable, "Pre-update")
+df <- df[df$Time_cont>0,]
 
 ggplot(df, aes(x=value, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
   geom_point() +
-  scale_x_continuous(expand = c(0, 0), name = "Predicted eGFR", limits = c(0,150)) + 
-  scale_y_continuous(expand = c(0, 0), name = "Observed EGFR", limits = c(0,150)) +
+  scale_x_continuous(expand = c(0, 0), name = expression(paste("Predicted eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) + 
+  scale_y_continuous(expand = c(0, 0), name = expression(paste("Observed eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) +
   scale_color_continuous("Time") +
   scale_fill_continuous("Time") +
   geom_abline(intercept = 0) + 
@@ -82,7 +84,7 @@ res_ext_boot <- future_lapply(1:b, function(x){
                            times =seq(0,8,1), 
                            all_times=F)
   data.boot$Time <- data.boot$Time_cat
-  data.boot.new <- full_join(data.boot, res$Pred[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
+  data.boot.new <- full_join(data.boot, res[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
   
   data.boot.list <- split(data.boot.new, as.factor(data.boot.new$Time)) 
   res <- lapply(data.boot.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi, lmerObject=risk_model))

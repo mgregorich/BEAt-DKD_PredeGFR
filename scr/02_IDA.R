@@ -180,17 +180,24 @@ Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
 # ================================ TABLE 1: Patient characteristics at baseline ====================================
 
 # Strafied by cohort
-data.tmp <- data.full[data.full$Time_cat==0,]
+df.tmp <- data.frame(data.diacore[data.diacore$Time_cat == 0, ])[c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia")]
+df.tmp$Cohort <- "Diacore"
+df.tmp$Cohort <- ifelse(df.tmp$Cohort=="0", "GCKD", ifelse(df.tmp$Cohort=="1", "PROVALID", "DIACORE"))
+
+data.tmp <- rbind(data.full[data.full$Time_cat==0,c(pred.vars, "Cohort","FU_eGFR_epi", "BL_bpsys", "BL_bpdia")], 
+                  df.tmp)
+
 table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia"), strata="Cohort", test=F)))
-table1_dev <- data.frame(names=row.names(table1), table1) 
 
-data.tmp <- data.diacore[data.diacore$Time_cat == 0,]
-table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia"), test=F)))
-table1_val <- data.frame(names=row.names(table1), table1) 
-
-table1_all <- full_join(table1_dev, table1_val, by="names") %>%
+tbl_table1 <- data.frame("Variable"=rownames(table1), table1) %>%
   `colnames<-`(c("Variable", "GCKD", "PROVALID", "DIACORE"))
-write.xlsx(table1_all, paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
+rownames(tbl_table1) <- NULL
+
+na_count <-sapply(data.tmp[,c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia")], 
+                  function(y) sum(length(which(is.na(y)))))
+tbl_table1$NA.count <- c("",na_count)
+
+write.xlsx(tbl_table1, paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
 
 # For the development cohort in total
 data.tmp <- data.full[data.full$Time_cat==0,]
