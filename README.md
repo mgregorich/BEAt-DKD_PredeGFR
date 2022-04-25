@@ -1,13 +1,17 @@
 # Prediction model of future eGFR in people with type 2 diabetes mellitus
 
 
-<img src="./figures/beatdkd_logo.png" style="width:60%" align="left"/>
+<img src="./figures/beat_logo.jpg" style="width:22.5%" align="right"/>
+
 Code for the development, validation and web implementation of the risk prediction calcuator within the BEAt-DKD project WP1 Task 5.
+
+This repository provides the accompanying code for model building, internal- external validation and external validation. In addition, the code for the web implementation using Shiny is available.
 <br clear="left"/>
 
 
-This repository provides the accompanying code for model building, internal- external validation and external validation. In addition, the code for the web implementation using Shiny is available.
+<br>
 
+**Reference:**\
 Gregorich, M.,  Kammer, M., Heinzel, A., Böger, C., Eckhardt, K. U., Heerspin, H., Jung, B., Mayer, G., Meiselbach, H., Schmid, M., Schultheiss, U., Heinze, G., & Oberbauer, R. (2022). Individual-specific prediction of future eGFR in people with type 2 diabetes mellitus: development and external validation. **(in submission)**
 
 
