@@ -64,6 +64,7 @@ ggplot(df, aes(x=value, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
   scale_color_continuous("Time") +
   scale_fill_continuous("Time") +
   geom_abline(intercept = 0) + 
+  
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), text=element_text(size=16), strip.text = element_text(size = 18)) +
   facet_wrap(~variable)

@@ -60,7 +60,7 @@ df.stats <- data.frame(do.call(rbind, lapply(res_cv_boot, `[[`, 1)))
 rm(list=ls())
 source("scr/setup.R")
 source("scr/01_dataprep.R", print.eval=F)
-risk_model <- readRDS(paste0(out.path,"predmodel_lmerObject.rds"))
+risk_model <- readRDS(paste0(out.path,"predmodel_lmerObject_sa.rds"))
 
 data.diacore$Time <- data.diacore$Time_cont
 data.diacore.t0 <- data.frame(data.diacore[data.diacore$Time_cat==0,])
