@@ -281,10 +281,11 @@ tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$
 colnames(tbl_fixeff) <- c("Variable", "Effect.Baseline", "95% CI", "Effect.Slope", "95% CI")
 write.xlsx(tbl_fixeff, paste0(out.path, "tbl_coeff_std.xlsx"), overwrite = TRUE)
 
+
 ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lower, xmax=upper)) +
   geom_point(size=2, shape=1) + 
   geom_errorbarh(height=.25) +
-  scale_y_discrete("") +
+  scale_y_discrete("", labels=c("HbA1c" = expression(HbA[1][c]), "log2 UACR"=expression(paste(log[2], ' UACR')))) +
   scale_x_continuous("Standardized Effect", limits = c(-0.4,0.4), breaks=seq(-0.4,0.4,0.1)) +
   geom_vline(xintercept=0, linetype="dashed", color = "red") +
   facet_wrap(~Group) +

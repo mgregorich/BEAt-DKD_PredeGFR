@@ -85,8 +85,8 @@ melted_cormat$value_label <- ifelse(melted_cormat$value_label %in% "NA", NA, mel
 ggplot(data = melted_cormat, aes(x=Var1, y=reorder(Var2, desc(Var2)), fill=value)) + 
   geom_tile() +
   geom_text(aes(label = value_label), size = 4) +
-  scale_x_discrete("") +
-  scale_y_discrete("") +
+  scale_y_discrete("", labels=c("HbA1c" = expression(HbA[1][c]), "log2 UACR"=expression(paste(log[2], ' UACR')))) +
+  scale_x_discrete("", labels=c("HbA1c" = expression(HbA[1][c]), "log2 UACR"=expression(paste(log[2], ' UACR')))) +
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
                        midpoint = 0, limit = c(-1,1), space = "Lab", 
                        name="Spearman\nCorrelation") +
