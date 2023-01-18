@@ -13,7 +13,4 @@ library(rsconnect)
 # rsconnect::setAccountInfo(name='beatdkd',
 #                           token='<TOKEN>',  # token and secret must be inserted
 #                           secret='<SECRET>')
-rsconnect::setAccountInfo(name='beatdkd',
-                          token='5250922C5FF6DBA42E91AC641FE261BA',
-                          secret='aTNlStV0f/F1UmmS1LuZ3N6nWVeWg8n9uTxhn0Ar')
 deployApp(appDir = here::here("shiny/"))
