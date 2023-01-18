@@ -13,7 +13,7 @@ This repository provides the accompanying code for model building, internal- ext
 <br>
 
 **Reference:**\
-Gregorich, M.,  Kammer, M., Heinzel, A., Böger, C., Eckhardt, K. U., Heerspin, H., Jung, B., Mayer, G., Meiselbach, H., Schmid, M., Schultheiss, U., Heinze, G., & Oberbauer, R. (2022). Individual-specific prediction of future eGFR in people with type 2 diabetes mellitus: development and external validation. **(in submission)**
+Gregorich, M.,  Kammer, M., Heinzel, A., Böger, C., Eckhardt, K. U., Heerspin, H., Jung, B., Mayer, G., Meiselbach, H., Schmid, M., Schultheiss, U., Heinze, G., & Oberbauer, R. (2023). Development and validation of a prediction model for future eGFR in people with type 2 diabetes mellitus. **(in submission)**
 
 
 ## Contents
@@ -39,4 +39,4 @@ The code uses the statistical software `R` (>= 4.0)
 
 ## Acknowledgements
 
-This project (Biomarker Enterprise to Attack DKD - BeatDKD) received funding from the Innovative Medicines Initiative 2 Joint Undertaking under grant agreement 115974. This Joint Undertaking receives support from the European Union’s Horizon 2020 research and innovation programme, European Federation of Pharmaceutical Industries and Associations, and the Juvenile Diabetes Research Foundation. A full list of BeatDKD partners may be found on the website (https://www.beat-dkd.eu/). 
+This project has received funding from the Innovative Medicines Initiative 2 Joint Undertaking under grant agreement No 115974. The JU receives support from the European Union’s Horizon 2020 research and innovation programme and EFPIA and JDRF. Any dissemination of results reflects only the author's view; the JU is not responsible for any use that may be made of the information it contains.  A full list of BeatDKD partners may be found on the website (https://www.beat-dkd.eu/). 

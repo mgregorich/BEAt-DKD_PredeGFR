@@ -188,10 +188,13 @@ shinyServer(function(input, output, session) {
           round(calc_out()[1,"pred.slope"],2),".", sep="" )
   })
   
-  text_longitudinal <- eventReactive(input$goButton, {  
-    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corresponding 95% (light grey) and 50% prediction interval (dark grey) given the provided information. These intervals comprise both sampling variability as well as the variability of individual data points. The observed baseline eGFR of the patient is indicated in red.", sep="" )
+  text_longitudinal1 <- eventReactive(input$goButton, {  
+    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corresponding 95% (light grey) and 50% prediction interval (dark grey) given the provided information. The observed baseline eGFR of the patient is indicated in red.", sep="" )
   })
   
+  text_longitudinal2 <- eventReactive(input$goButton, {  
+    paste("A prediction interval represents a range of values which captures the uncertainty of predicting the value of a single future observation given the baseline information. These intervals comprise both sampling variability as well as the variability of individual data points. For example, the 95% prediction interval represented here means that you can be 95% confident that the next new observation will fall within this range.", sep="" )
+  })
   
   text_data <- eventReactive(input$goButton,{
       HTML(paste0("The tables below contain both the patient information given and the predictions resulting from the model, including 95% prediction intervals for the individual time points. The patient's probability of progression to fast kidney function decline is also given."))
@@ -218,8 +221,12 @@ shinyServer(function(input, output, session) {
     text_data()
   })
   
-  output$text_longitudinal <- renderText({
-    text_longitudinal()
+  output$text_longitudinal1 <- renderText({
+    text_longitudinal1()
+  })
+  
+  output$text_longitudinal2 <- renderText({
+    text_longitudinal2()
   })
   
   output$plot_trajectory <- renderPlot({

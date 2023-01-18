@@ -189,8 +189,10 @@ navbarPage(corner_element,
                                       # Output: Histogram ----
                                       tabsetPanel(
                                         tabPanel("Longitudinal",
-                                                 h4(id="text1", textOutput("text_longitudinal")),
-                                                 plotOutput("plot_trajectory", height="500px", width="700px")),
+                                                 h4(id="text1", textOutput("text_longitudinal1")),
+                                                 h4(id="text1", textOutput("text_longitudinal2")),
+                                                 fluidRow(align="center",
+                                                          plotOutput("plot_trajectory", height="500px", width="700px"))),
                                         tabPanel("Risk", 
                                                  h4(id="text1", textOutput("text_risk1")),
                                                  h4(id="text1", textOutput("text_risk2")),
