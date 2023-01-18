@@ -39,7 +39,7 @@ tbl_performance[[4]] <-df.tmp %>%
   dplyr::select(Time, N, N.ci, R2, R2.ci, C, C.ci, CS, CS.ci) 
 
 names(tbl_performance) <- c("avg", "ci.lo", "ci.up", "reported")
-write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val_full.xlsx"), overwrite = T)
+write.xlsx(tbl_performance, here::here(out.path, "model_main","tbl_perform_val_full.xlsx"), overwrite = T)
 
 
 
@@ -47,14 +47,14 @@ write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_val_full.xlsx"), overw
 
 for(t in 2:7){
   # Before update
-  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$prior.pred, 
-                        time=t, save=T, out.path = out.path, cohort="dev", type="preUp")
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi_2021, yhat=df.preds[df.preds$Time==t,]$prior.pred, 
+                        time=t, save=T, folder="model_main", out.path = out.path, cohort="dev", type="preUp")
   # After update
-  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi, yhat=df.preds[df.preds$Time==t,]$pred, 
-                        time=t, save=T, out.path = out.path, cohort="dev", type="postUp")
+  plot_calibration_cont(yobs=df.preds[df.preds$Time==t,]$FU_eGFR_epi_2021, yhat=df.preds[df.preds$Time==t,]$pred, 
+                        time=t, save=T, folder="model_main", out.path = out.path, cohort="dev", type="postUp")
 }
 
-ggplot(df.preds, aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
+ggplot(df.preds, aes(x=pred, y=FU_eGFR_epi_2021, fill=Time_cont, col=Time_cont)) +
   geom_point() +
   scale_x_continuous(expand = c(0, 0), name = "Predicted eGFR", limits = c(0,150)) + 
   scale_y_continuous(expand = c(0, 0), name = "Observed EGFR", limits = c(0,150)) +
@@ -63,8 +63,7 @@ ggplot(df.preds, aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
   geom_abline(intercept = 0) + 
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), text=element_text(size=22)) 
-ggsave(paste0(out.path, "fig_calibration_all_dev_post.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
-
+ggsave(here::here(out.path, "model_main", "fig_calibration_all_dev_post.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 # ==================== Calibration: Probability of progression =================
@@ -79,7 +78,7 @@ cat(paste0("RISK ASSESSMENT: \nBrier = ", round(Brier,2), ", C statistic = ", ro
 
 
 par(mfrow=c(2,2))
-tiff(paste0(out.path, "hist_slopes.png"),
+tiff(here::here(out.path, "model_main", "hist_slopes.png"),
      res = 300,                                              
      width = 5, height = 4, units = 'in',
      compression = c( "lzw"))
@@ -94,7 +93,7 @@ ggplot(df.preds, aes(x=pred.slope, y=true.slope)) +
   scale_y_continuous("Observed eGFR slope (LM)") +
   theme_bw() +
   theme(text=element_text(size=16))
-ggsave(paste0(out.path, "fig_prob_progression_full.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_prob_progression_full.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 # Pick individual with largest deviation of treu and predicted
@@ -107,7 +106,7 @@ df.preds[which.max(df.preds$true.slope - df.preds$pred.slope),]$PatID
 which.max(abs(coef(fit.final)$PatID[,"Time"]))
 
 set.seed(666)
-df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.lo", "pred.up", "true.slope", "pred.slope")], id.vars = c("PatID","Time", "pred.lo", "pred.up", "true.slope", "pred.slope"))
+df.melt <- melt(df.preds[,c("PatID","Time", "FU_eGFR_epi_2021","pred", "pred.lo", "pred.up", "true.slope", "pred.slope")], id.vars = c("PatID","Time", "pred.lo", "pred.up", "true.slope", "pred.slope"))
 df.melt.small <- df.melt[df.melt$PatID %in% c(sample(unique(df.melt$PatID),16)),]
 df.melt.small$Time <- as.numeric(df.melt.small$Time)
 graphLabels <- df.melt.small[!duplicated(df.melt.small$PatID),]
@@ -126,7 +125,7 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16)) +
   geom_text(data=graphLabels, aes(x = 4, y = 125, label =label1),  size=3) 
-ggsave(paste0(out.path, "fig_indvPred_eGFR_dev.png"),width=10, height=15)
+ggsave(here::here(out.path, "model_main", "fig_indvPred_eGFR_dev.png"),width=10, height=15)
 
 df.melt.small <- df.melt[df.melt$PatID %in% "PV14750",]
 df.melt.small$Time <- as.numeric(df.melt.small$Time)
@@ -163,13 +162,13 @@ ggplot(data =df.melt.small_0, aes(x = Time, y = value,  col=variable)) +
   theme_bw() +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
-ggsave(paste0(out.path, "fig_indvPred_eGFR_dev_noUpdate.png"),width=10, height=6)
+ggsave(here::here(out.path, "model_main", "fig_indvPred_eGFR_dev_noUpdate.png"),width=10, height=6)
 
 
 # ---- Mean country trajectories
 df.preds %>%
   group_by(Country, Time) %>%
-  summarise(pm = median(FU_eGFR_epi, na.rm=T)) %>%
+  summarise(pm = median(FU_eGFR_epi_2021, na.rm=T)) %>%
   ggplot(aes(x = Time, y = pm, group = Country, col=Country)) +
   geom_point() +
   geom_line(aes(color=Country)) +
@@ -178,29 +177,29 @@ df.preds %>%
 
 # ---- Longitudinal trajectory of observed eGFR per country
 df.preds$Time <- as.factor(df.preds$Time)
-ggplot(df.preds,aes(x = Time, y = FU_eGFR_epi, fill=Country))  +
+ggplot(df.preds,aes(x = Time, y = FU_eGFR_epi_2021, fill=Country))  +
   geom_boxplot(aes(x=Time, fill=Country), outlier.shape = NA) +
   stat_boxplot(aes(fill=Country),geom ='errorbar') +
   scale_y_continuous("Observed eGFR") +
   theme_bw() +
   theme(text = element_text(size=16))
-ggsave(paste0(out.path, "fig_longiObs_eGFR.png"),width=12, height=6)
+ggsave(here::here(out.path, "model_main", "fig_longiObs_eGFR.png"),width=12, height=6)
 
 
 # Longitudinal trajectory of predicted eGFR per cohort
 data.diacore$Cohort <- as.factor(data.diacore$Cohort)
-df.tmp <- data.frame(rbind(df.preds[,c("Time_cat", "FU_eGFR_epi", "Cohort")], data.diacore[,c("Time_cat", "FU_eGFR_epi", "Cohort")]))
+df.tmp <- data.frame(rbind(df.preds[,c("Time_cat", "FU_eGFR_epi_2021", "Cohort")], data.diacore[,c("Time_cat", "FU_eGFR_epi_2021", "Cohort")]))
 df.tmp$Time_cat <- as.factor(df.tmp$Time_cat)
 df.tmp <- df.tmp[!is.na(df.tmp$Time_cat),]
-ggplot(df.tmp,aes(x = Time_cat, y = FU_eGFR_epi, fill=Cohort))  +
+ggplot(df.tmp,aes(x = Time_cat, y = FU_eGFR_epi_2021, fill=Cohort))  +
   geom_boxplot(outlier.shape = NA) +
   stat_boxplot(geom ='errorbar') +
   scale_y_continuous(expand=c(0,0),"Observed eGFR", lim=c(0,150), breaks=seq(0,150,25)) +
   scale_x_discrete("Time") +
-  scale_fill_manual(values=c("skyblue1", "royalblue1", "lightgreen"), labels=c("GCKD", "PROVALID", "DIACORE")) +
+  scale_fill_brewer(palette = "Set2", labels=c("GCKD","PROVALID","DIACORE")) +
   theme_bw() +
   theme(text = element_text(size=16))
-ggsave(paste0(out.path, "fig_longiobs_eGFR_cohort.png"),width=10, height=6)
+ggsave(here::here(out.path, "model_main", "fig_longiobs_eGFR_cohort.png"),width=10, height=6)
 
 
 
@@ -211,7 +210,7 @@ ggplot(df.preds,aes(x = Time, y = pred, fill=Country))  +
   scale_y_continuous("Predicted eGFR") +
   theme_bw() +
   theme(text = element_text(size=16))
-ggsave(paste0(out.path, "fig_longipred_eGFR.png"),width=12, height=6)
+ggsave(here::here(out.path, "model_main", "fig_longipred_eGFR.png"),width=12, height=6)
 
 # ---- Longitudinal trajectory of predicted eGFR per cohort
 df.preds$Cohort <- as.factor(df.preds$Cohort)
@@ -222,7 +221,7 @@ ggplot(df.preds,aes(x = Time, y = pred, fill=Cohort))  +
   scale_fill_manual(values=c("orange1", "royalblue1"), labels=c("GCKD", "PROVALID")) +
   theme_bw() +
   theme(text = element_text(size=16))
-ggsave(paste0(out.path, "fig_longipred_eGFR_cohort_dev.png"),width=10, height=6)
+ggsave(here::here(out.path, "model_main", "fig_longipred_eGFR_cohort_dev.png"),width=10, height=6)
 
 
 # ================= Table: Model coefficients ================================
@@ -247,15 +246,15 @@ df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP",
 df$CI <- paste0("(",df$lower,", " ,df$upper,")")
 tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$name, "Time"),c(2,8)])
 colnames(tbl_fixeff) <- c("Variable", "Effect.Baseline", "95% CI", "Effect.Slope", "95% CI")
-write.xlsx(tbl_fixeff, paste0(out.path, "tbl_coeff_unstd.xlsx"), overwrite = TRUE)
+write.xlsx(tbl_fixeff, here::here(out.path, "model_main", "tbl_coeff_unstd.xlsx"), overwrite = TRUE)
 
 
 
 
 # ===================== Forest plot of standardized coefficients ===============
 data.scaled <- data.full %>%mutate_at(vars(Time, BL_age, BL_bmi, BL_map, BL_hba1c, 
-                                           BL_serumchol, BL_hemo, BL_uacr_log2, FU_eGFR_epi), scale)
-fit.scaled <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
+                                           BL_serumchol, BL_hemo, BL_uacr_log2, FU_eGFR_epi_2021), scale)
+fit.scaled <- lmer(FU_eGFR_epi_2021 ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
                                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
                    data=data.scaled, REML=F, control=lmerControl(optimizer="bobyqa"))
 
@@ -279,7 +278,7 @@ df$Variable <- c(rep("Constant",2), rep(c("Age", "Sex", "BMI", "Smoking", "MAP",
 df$CI <- paste0("(",df$lower,", " ,df$upper,")")
 tbl_fixeff <- cbind(df[!str_detect(df$name, "Time"),c(7,2,8)], df[str_detect(df$name, "Time"),c(2,8)])
 colnames(tbl_fixeff) <- c("Variable", "Effect.Baseline", "95% CI", "Effect.Slope", "95% CI")
-write.xlsx(tbl_fixeff, paste0(out.path, "tbl_coeff_std.xlsx"), overwrite = TRUE)
+write.xlsx(tbl_fixeff, here::here(out.path, "model_main","tbl_coeff_std.xlsx"), overwrite = TRUE)
 
 
 ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lower, xmax=upper)) +
@@ -291,7 +290,8 @@ ggplot(data=df[-1,], aes(y=reorder(variable,desc(variable)), x=effect, xmin=lowe
   facet_wrap(~Group) +
   theme_bw() +
   theme(text = element_text(size = 12))
-ggsave(paste0(out.path, "plot_forest_standardized.tiff"),  width=8, height=4, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "plot_forest_standardized.tiff"),  width=8, height=4, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "plot_forest_standardized.wmf"),  width=8, height=4, dpi=350)
 
 
 # ====================== Individual risk predictions ==========================
@@ -304,7 +304,8 @@ ggplot(df.preds.t0, aes(x=pred.prob, fill=Cohort)) +
   scale_y_continuous("Density") +
   theme_bw() +
   theme(text = element_text(size=18), legend.position = "bottom", legend.title = element_blank()) 
-ggsave(paste0(out.path, "fig_prob_progression_",abs(slope_cutpoint),"_dev.png"),width=8, height=6)
+filename <- paste0("fig_prob_progression_",abs(slope_cutpoint),"_dev.png")
+ggsave(here::here(out.path, "model_main", filename),width=8, height=6)
 
 summary(df.preds.t0$pred.prob)
 summary(df.preds.t0[df.preds.t0$Cohort==0,]$pred.prob)
@@ -322,7 +323,7 @@ i=1
 plan(multisession, gc=T, workers=detectCores()*.6)
 out <- t(future_sapply(1:nboot, function(x) {
   data.boot <- draw_bootstrap_sample(data.full)
-  fit.full <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+  fit.full <- lmer(FU_eGFR_epi_2021 ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
                                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
                    data=data.boot, REML=F, control=lmerControl(optimizer="bobyqa"))
   r2.full <- r.squaredGLMM(fit.full)
@@ -336,7 +337,7 @@ tbl_partialR2[i, ] <- c("Full", apply(out, 2, function(x) c(mean(x), quantile(x,
 for(i in 1:length(pred.vars)){
   # Reduced
   model.vars <- pred.vars[-i]
-  model.formula <- as.formula(paste0("FU_eGFR_epi ~ (Time + Time  *(",paste(model.vars,collapse="+") ,") + (1|Country) + (1+Time|PatID))"))
+  model.formula <- as.formula(paste0("FU_eGFR_epi_2021 ~ (Time + Time  *(",paste(model.vars,collapse="+") ,") + (1|Country) + (1+Time|PatID))"))
   plan(multisession, gc=T, workers=detectCores()*.6)
   out <- t(future_sapply(1:nboot, function(x) {
     data.boot <- draw_bootstrap_sample(data.full)
@@ -349,11 +350,11 @@ for(i in 1:length(pred.vars)){
 
   tbl_partialR2[i+1, ] <- c(pred.vars[i], apply(out, 2, function(x) c(mean(x), quantile(x, 0.05), quantile(x, 0.95))))
 }
-write.xlsx(tbl_partialR2, paste0(out.path, "tbl_partialR2.xlsx"), overwrite = T)
+write.xlsx(tbl_partialR2, here::here(out.path, "model_main", "tbl_partialR2.xlsx"), overwrite = T)
 
 
 # --- Visualization
-tbl_partR2 <- read.xlsx(paste0(out.path, "tbl_partialR2.xlsx"))
+tbl_partR2 <- read.xlsx(here::here(out.path, "model_main", "tbl_partialR2.xlsx"))
 tbl_partR2$term <- as.factor(tbl_partR2$term)
 levels(tbl_partR2$term) <- list("Full Model"="Full",Age  = "BL_age", "Sex" = "BL_sex", BMI="BL_bmi", "Smoking"="BL_smoking", MAP="BL_map", HbA1c="BL_hba1c",
                                 "Serum Chol."="BL_serumchol","Hemoglobin"="BL_hemo", "log2 UACR"="BL_uacr_log2", 
@@ -384,5 +385,5 @@ ggplot(tbl_partR2, aes(x=est, y=term, col=type)) +
         axis.text.y = element_text(face = c('plain', 'plain', 'plain', 'plain', 'plain', 'plain', 
                                             'plain', 'plain', 'plain', 'plain', 'plain', 'plain','bold'))) +
   facet_wrap(~type, scales="free_x")
-ggsave(paste0(out.path, "fig_partialR2_bold.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_partialR2_bold.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 

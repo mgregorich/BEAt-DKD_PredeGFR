@@ -13,12 +13,12 @@
 # rm(list = ls())
 # source("scr/setup.R")
 # source("scr/01_dataprep.R", print.eval=F)
-
+# 
 
 # ====================== Model development =====================================
 
 data.full$Time <- data.full$Time_cont
-fit.final <- lmer(FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
+fit.final <- lmer(FU_eGFR_epi_2021 ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +                                                  
                 BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID)),
                   data=data.full, REML=F, control=lmerControl(optimizer="bobyqa"))
 
@@ -44,7 +44,7 @@ distr.slopes <- data.frame("quantil"=names(distr.slopes), "Value"=distr.slopes, 
 # ================== Internal validation  =====================================
 
 # ---- (1) Save final model and extract components for shiny ----
-saveRDS(fit.final, paste0(out.path,"predmodel_lmerObject.rds"))
+saveRDS(fit.final, here::here(out.path,"model_main","predmodel_lmerObject.rds"))
 
 pred_components <- extractLMER(fit.final, idVar = "PatID")
 pred_components$distr.slopes <- distr.slopes
@@ -73,17 +73,17 @@ saveJSON(pred_components,
 # ---- (3) Calibration -----
 for(t in 1:7){
   #Before update
-  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$prior.pred,
+  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi_2021, yhat=data.preds[data.preds$Time==t,]$prior.pred,
                         cohort="dev", time=t, save=F, out.path = out.path, type="preUp")
   #After update
-  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi, yhat=data.preds[data.preds$Time==t,]$pred, 
+  plot_calibration_cont(yobs=data.preds[data.preds$Time==t,]$FU_eGFR_epi_2021, yhat=data.preds[data.preds$Time==t,]$pred, 
                         cohort="dev", time=t, save=F, out.path = out.path, type="postUp")
 }
 
 
 # ---- (4) Residual check -----
 
-check_residuals(fit.final, filename = "fig_residual_analysis")
+check_residuals(fit.final, path = here::here(out.path, "model_main","fig_residual_analysis.tiff"))
 
 
 # ---- (5) Linearity in each variables -----

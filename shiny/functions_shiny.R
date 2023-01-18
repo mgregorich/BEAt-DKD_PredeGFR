@@ -76,14 +76,16 @@ plot_trajectory <- function(x){
   
   p1 <- ggplot2::ggplot(x, ggplot2::aes(x=Time, y=pred)) +
     ggplot2::geom_point(ggplot2::aes(colour="Predicted eGFR"),size=5, shape=8)  +
-    ggplot2::geom_point(ggplot2::aes(x=0, y=BaseGFR[1], colour="Observed eGFR"), shape=8, size=5) +
+    ggplot2::geom_point(ggplot2::aes(x=0, y=BaseGFR, colour="Observed eGFR"), shape=8, size=5) +
     ggplot2::geom_line() +
     ggplot2::scale_color_manual("",values = c("Predicted eGFR" = "black", "Observed eGFR" = "red3")) +
-    ggplot2::geom_ribbon(ggplot2::aes(ymin = pred.lo, ymax = pred.up), 
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = pred.lo.95, ymax = pred.up.95), 
                          alpha = 0.1) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = pred.lo.50, ymax = pred.up.50), 
+                         alpha = 0.2) +
     ggplot2::scale_x_continuous("Follow-up time (in years)", 
                                 limits = c(0, 5), breaks = seq(0, 10, 1)) +
-    ggplot2::scale_y_continuous(expression(paste("eGFR (mL/min/1.73 ", m^2, ")"))) +
+    ggplot2::scale_y_continuous(expression(paste("eGFR (mL/min/1.73 ", m^2, ")")), breaks=seq(0,150,10)) +
     ggplot2::theme_bw() +
     ggplot2::theme(text = ggplot2::element_text(size=20), legend.position = "top")
   p1
@@ -93,7 +95,7 @@ plot_trajectory <- function(x){
 
 # ==================== PREDICTION UPDATE WITH BASELINE VALUES  =================
 
-update_PredByBase <- function (lmerList, newdata, cutpoint=-3, level=0.95, baseline_eGFR=T) 
+update_PredByBase <- function (lmerList, newdata, cutpoint=-3, levels=c(0.95, 0.50), baseline_eGFR=T) 
 {
   # ---- Specify relevant components
   idVar = "PatID"
@@ -178,19 +180,22 @@ update_PredByBase <- function (lmerList, newdata, cutpoint=-3, level=0.95, basel
   SE.dyit <- se
   
   se.pred <- unlist(SE.yit)
-  low <-  y_hat_time - qnorm((1-level)/2,lower.tail=FALSE) * se.pred
-  upp <- y_hat_time + qnorm((1-level)/2,lower.tail=FALSE) * se.pred
+  low1 <-  y_hat_time - qnorm((1-levels[2])/2,lower.tail=FALSE) * se.pred
+  upp1 <- y_hat_time + qnorm((1-levels[2])/2,lower.tail=FALSE) * se.pred
+  low2 <-  y_hat_time - qnorm((1-levels[1])/2,lower.tail=FALSE) * se.pred
+  upp2 <- y_hat_time + qnorm((1-levels[1])/2,lower.tail=FALSE) * se.pred
   
   se.pred.dev <- unlist(SE.dyit)
-  low.dev <-   dyit_hat - qnorm((1-level)/2,lower.tail=FALSE) * se.pred.dev
-  upp.dev <-  dyit_hat + qnorm((1-level)/2,lower.tail=FALSE) * se.pred.dev
+  low.dev <-   dyit_hat - qnorm((1-levels[1])/2,lower.tail=FALSE) * se.pred.dev
+  upp.dev <-  dyit_hat + qnorm((1-levels[1])/2,lower.tail=FALSE) * se.pred.dev
   
   # ------ Probability of Progression:
   prob.prog <- round(pnorm((cutpoint-dyit_hat)/se.pred.dev, lower.tail=T),4)
   
   # ------Output
   # Predictions + CI
-  out_data <- data.frame(newdata_pred, "prior.pred"=pred_y_it, "pred"=y_hat_time, "pred.lo"=low, "pred.up"=upp,
+  out_data <- data.frame(newdata_pred, "prior.pred"=pred_y_it, "pred"=y_hat_time, "pred.lo.95"=low2, "pred.up.95"=upp2,
+                         "pred.lo.50"=low1, "pred.up.50"=upp1,
                          "pred.slope"=dyit_hat, "pred.slope.lo"=low.dev, "pred.slope.up"=upp.dev,
                          "pred.prob"=prob.prog)
   out_data$Time_cat <- out_data$Time

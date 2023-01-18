@@ -113,6 +113,27 @@ readJSON <- function(file) {
 
 # -------------------------- MODELLING --------------------
 
+ckd_epi_2021 <- function (creat, age, sex, units = "SI") 
+{
+  #' eGFR in mL/min/1.73m2
+  #' serum creatinine in mg/dL
+  #' age in years
+  #' sex as "F" or "M"
+  
+  sexvar = ifelse(sex == "M", 1, 1.012)
+  alpha = ifelse(sex == "M", -0.302, -0.241)
+  kappa = ifelse(sex == "M", 0.9, 0.7)
+  
+  if (units == "SI") {
+    creat = creat/88.42
+  }
+  
+  egfr = 142 * ifelse(creat/kappa > 1, 1, creat/kappa)^alpha * 
+    ifelse(creat/kappa < 1, 1, creat/kappa)^-1.200 * 0.9938^age * 
+    sexvar
+  return(egfr)
+}
+
 adjusted_R2 <- function(pred, obs, N, k){
   r2 <- cor(pred,obs, use="pairwise.complete.obs")^2
   r2 <- 1-(((1-r2)*(N-1))/(N-k-1))
@@ -124,7 +145,7 @@ c_index <- function(pred, obs){
   return(1-cindex(c.model))
 }
 
-check_residuals <- function(fit.model, filename="fig_residual_analysis"){
+check_residuals <- function(fit.model, path="fig_residual_analysis.tiff"){
   
   df_model <- augment(fit.model)
   df_model[".stdresid"] <- resid(fit.model, type = "pearson")
@@ -147,7 +168,7 @@ check_residuals <- function(fit.model, filename="fig_residual_analysis"){
     theme(text=element_text(size=16))
   
   p3<-grid.arrange(p1,p2)
-  ggsave(paste0(out.path, filename, ".tiff"), plot=p3  ,width=10, height=6, device='tiff', dpi=350, compression = 'lzw')
+  ggsave(path, plot=p3  ,width=10, height=6, device='tiff', dpi=350, compression = 'lzw')
   
   return(p3)
 }
@@ -222,7 +243,7 @@ draw_bootstrap_sample <- function(data.tmp, cv=T){
 }
 
 
-intext_crossvalidate <- function(data.boot, b.nr, return_preds=F, sa =F){
+intext_crossvalidate <- function(data.boot, b.nr, mod_formula=NULL, return_preds=F, sa =F){
   #' return_preds ... return predicted values
   #' sa .... perform sensitivity analysis: exclude age and sex from model
   #' b.nr ... bootstrap iteration for post-processing
@@ -230,16 +251,18 @@ intext_crossvalidate <- function(data.boot, b.nr, return_preds=F, sa =F){
   #' 
   # data.boot=data.full; b.nr=NA; return_preds=T; sa=F
   
-  if(sa){ # formula for sensitivity analysis
-    lmer_formula <- as.formula("FU_eGFR_epi ~ (Time + Time  *(BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
-                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID))")
-  }else{ # formula of main analysis
-    lmer_formula <- as.formula("FU_eGFR_epi ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
-                                    BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID))")
-    }
+
+  if(is.null(mod_formula)){
+  # formula of main analysis
+  lmer_formula <- as.formula("FU_eGFR_epi_2021 ~ (Time + Time  *(BL_age + BL_sex + BL_bmi + BL_smoking + BL_map + BL_hba1c + BL_serumchol +
+                                  BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid) + (1|Country) + (1+Time|PatID))")
+  }else{
+    lmer_formula <- mod_formula
+  }
+  
   
   df.pred <- df.res <- df.re <- list()
-  c = length(unique(data.full$Country))
+  c = length(unique(data.boot$Country))
   i=1
   for(i in 1:c){
     data.train <- data.boot[data.boot$fold != i, ] 
@@ -284,7 +307,7 @@ intext_crossvalidate <- function(data.boot, b.nr, return_preds=F, sa =F){
 
 # ------------------------------ PLOTS ------------------------
 
-plot_calibration_cont <- function(yobs, yhat, time="Not specified!", cohort="dev",save=F, type="postUp",
+plot_calibration_cont <- function(yobs, yhat, time="Not specified!", cohort="dev",save=F, type="postUp", folder="model_main",
                              out.path = "."){
   df <- data.frame(yobs=yobs, yhat=yhat)
 
@@ -298,11 +321,12 @@ plot_calibration_cont <- function(yobs, yhat, time="Not specified!", cohort="dev
     theme_bw() +
     theme(plot.title = element_text(hjust = 0.5), text=element_text(size=18)) 
 
-  if(save){ggsave(paste0(out.path, "fig_cal_",cohort,"_t",time,"_",type,".png"),width=8, height=8)}
+  filename <- paste0("fig_cal_",cohort,"_t",time,"_",type,".png")
+  if(save){ggsave(here::here(out.path, folder, filename),width=8, height=8)}
   print(p)  
 }
 
-plot_calibration_bin <- function(pred, true, out.path, save=F){
+plot_calibration_bin <- function(pred, true, out.path, save=F, folder="model_main"){
   # Generate calibration curve plot for binary outcome (0,1)
   data <- data.frame("pred"=pred,"true"=true)
   
@@ -329,7 +353,7 @@ plot_calibration_bin <- function(pred, true, out.path, save=F){
           panel.border = element_blank(),
           panel.background = element_blank()) 
   print(p)
-  if(save){ggsave(paste0(out.path, "fig_cal_probability.png"), width = 20, height = 20, dpi = 640, units="cm", limitsize = F)}
+  if(save){ggsave(here::here(out.path, folder,"fig_cal_probability.png"), width = 20, height = 20, dpi = 640, units="cm", limitsize = F)}
   return(p)
 }
 
@@ -352,12 +376,12 @@ plot_fun <- function( x, y, time=0 ){
 #' @details 
 #' Ported from implementation in `JMBayes::indvPred_lme`. 
 
-update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL, times,
+update_PredByBase <- function(lmerObject, newdata, timeVar, idVar, idVar2=NULL, times,
                                  level = 0.95, cutpoint=-3, all_times) 
 {
   # Specify to try the function
   # lmerObject = fit.final
-  # newdata = data.full.t0
+  # newdata = tmp
   # timeVar = "Time"
   # idVar <- "PatID"
   # idVar2="Country"
@@ -466,10 +490,17 @@ update_PredByBase <- function (lmerObject, newdata, timeVar, idVar, idVar2=NULL,
   y_hat_time <- c(X_new_pred %*% betas) + rowSums(Z_new_pred * b.new[id_pred, , drop = FALSE]) + Z_2_new_pred
   
   # ------ eGFR slope per individual
-  dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
-    c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
-        betas[str_detect(names(betas), paste0(timeVar,":"))]) +
-    c(b.new[,str_detect(colnames(b.new), "Time")])
+  if(length(betas[str_detect(names(betas), paste0(timeVar,":"))])!=1){
+    dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
+      c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] %*% 
+          betas[str_detect(names(betas), paste0(timeVar,":"))]) +
+      c(b.new[,str_detect(colnames(b.new), "Time")])
+    }else{
+    dyit_hat <- betas[str_detect(names(betas), paste0(timeVar,"$"))] + 
+      c(X_new[,!str_detect(colnames(X_new_pred), paste0(timeVar,"|Intercept"))] *
+          betas[str_detect(names(betas), paste0(timeVar,":"))]) +
+      c(b.new[,str_detect(colnames(b.new), "Time")])
+  }
   
   # ------ Prediction interval
   V.fe.dev <- V.fe[str_detect(rownames(V.fe), "Time"), str_detect(colnames(V.fe), "Time")]

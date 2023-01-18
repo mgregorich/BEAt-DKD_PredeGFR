@@ -59,20 +59,20 @@ barplot(table(data.full[data.full$Time_cont==0,]$BL_med_lipid), ylab = "Frequenc
 
 # Histograms per time point for eGFR
 par(mfrow=c(1,1))
-data.full %>% filter(Time_cat==0) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=0", xlab=NULL) 
-data.full %>% filter(Time_cat==1) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=1", xlab=NULL) 
-data.full %>% filter(Time_cat==2) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=2", xlab=NULL) 
-data.full %>% filter(Time_cat==3) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=3", xlab=NULL) 
-data.full %>% filter(Time_cat==4) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=4", xlab=NULL) 
-data.full %>% filter(Time_cat==5) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=5", xlab=NULL) 
-data.full %>% filter(Time_cat==6) %>%  pull(FU_eGFR_epi) %>% hist(main = "eGFR - time=6", xlab=NULL) 
+data.full %>% filter(Time_cat==0) %>%  pull(FU_eGFR_epi_2021) %>% hist(main = "eGFR - time=0", xlab=NULL) 
+data.full %>% filter(Time_cat==1) %>%  pull(FU_eGFR_epi_2021) %>% hist(main = "eGFR - time=1", xlab=NULL) 
+data.full %>% filter(Time_cat==2) %>%  pull(FU_eGFR_epi_2021) %>% hist(main = "eGFR - time=2", xlab=NULL) 
+data.full %>% filter(Time_cat==3) %>%  pull(FU_eGFR_epi_2021) %>% hist(main = "eGFR - time=3", xlab=NULL) 
+data.full %>% filter(Time_cat==4) %>%  pull(FU_eGFR_epi_2021) %>% hist(main = "eGFR - time=4", xlab=NULL) 
+data.full %>% filter(Time_cat==5) %>%  pull(FU_eGFR_epi_2021) %>% hist(main = "eGFR - time=5", xlab=NULL) 
+data.full %>% filter(Time_cat==6) %>%  pull(FU_eGFR_epi_2021) %>% hist(main = "eGFR - time=6", xlab=NULL) 
 
 
 # ======================= Correlation heatmap ===================================
-x_tmp <- data.frame(model.matrix(FU_eGFR_epi~BL_age + BL_sex + BL_smoking + BL_bmi + BL_map + BL_hba1c 
+x_tmp <- data.frame(model.matrix(FU_eGFR_epi_2021~BL_age + BL_sex + BL_smoking + BL_bmi + BL_map + BL_hba1c 
                       + BL_serumchol + BL_hemo + BL_uacr_log2 + BL_med_dm + BL_med_bp + BL_med_lipid, 
                       data=data.full[data.full$Time_cat==0,])[,-1])
-colnames(x_tmp) <- c("Age", "Sex", "Smoking", "BMI", "MAP", "Hba1C", "Serum chol.", "Hemoglobin", "log2UACR", "Glucose-low. Med.", "BP-low. Med.", "Lipid-low. Med.")
+colnames(x_tmp) <- c("Age", "Sex", "Smoking", "BMI", "MAP", "Hba1C", "Serum chol.", "Hemoglobin", "log2UACR", "Glucose-low. med.", "BP-low. med.", "Lipid-low. med.")
 corr <- cor(x_tmp, method = "spearman")
 (abs(corr)>0.5)
 
@@ -85,16 +85,16 @@ melted_cormat$value_label <- ifelse(melted_cormat$value_label %in% "NA", NA, mel
 ggplot(data = melted_cormat, aes(x=Var1, y=reorder(Var2, desc(Var2)), fill=value)) + 
   geom_tile() +
   geom_text(aes(label = value_label), size = 4) +
-  scale_y_discrete("", labels=c("HbA1c" = expression(HbA[1][c]), "log2 UACR"=expression(paste(log[2], ' UACR')))) +
-  scale_x_discrete("", labels=c("HbA1c" = expression(HbA[1][c]), "log2 UACR"=expression(paste(log[2], ' UACR')))) +
+  scale_y_discrete("", labels=c("Hba1C" = expression(HbA["1c"]), "log2UACR"=expression(paste(log[2], ' UACR')))) +
+  scale_x_discrete("", labels=c("Hba1C" = expression(HbA["1c"]), "log2UACR"=expression(paste(log[2], ' UACR')))) +
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
                        midpoint = 0, limit = c(-1,1), space = "Lab", 
-                       name="Spearman\nCorrelation") +
+                       name="Spearman\ncorrelation") +
   theme_bw() +
   theme(legend.position = "right", text=element_text(size=16),
         axis.text.x = element_text(angle = 45, hjust=1), 
         legend.text = element_text(size=12), legend.title = element_text(size=14))
-ggsave(paste0(out.path, "fig_correlation.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main","fig_correlation.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 
@@ -109,7 +109,7 @@ plots <- lapply(1:nrow(pairw.int), function(x) plot_fun(x=pairw.int[x,1], y=pair
 
 
 # ========================== Check non-linearities =============================
-plots <- lapply(cont.vars, function(x) plot_fun(x=x, y="FU_eGFR_epi", time=1))
+plots <- lapply(cont.vars, function(x) plot_fun(x=x, y="FU_eGFR_epi_2021", time=1))
 #plots
 
 # Non-linearity for BL_age
@@ -137,6 +137,14 @@ summary(data.diacore$true.slope)
 # --- Average years of follow-up ----
 
 tmp <- data.full %>%
+  filter(Cohort==1) %>%
+  group_by(PatID) %>%
+  summarise(max_time=max(Time_cont))
+mean(tmp$max_time)
+hist(tmp$max_time)
+
+tmp <- data.full %>%
+  filter(Cohort==0) %>%
   group_by(PatID) %>%
   summarise(max_time=max(Time_cont))
 mean(tmp$max_time)
@@ -156,7 +164,7 @@ table(data.diacore$Time_cat)
 # =========================== CKD stage at baseline ============================
 data.tmp <- data.full %>%
   filter(Time_cat==0) %>%
-  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi >=90, 1, ifelse(FU_eGFR_epi >=60, 2, 3))))
+  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi_2021 >=90, 1, ifelse(FU_eGFR_epi_2021 >=60, 2, 3))))
 
 ggplot(data.tmp, aes(x=CKDstage, fill=Cohort)) +
   geom_bar(stat="count") +
@@ -169,7 +177,7 @@ Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
 
 data.tmp <- data.diacore %>%
   filter(Time_cat==0) %>%
-  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi >=90, 1, ifelse(FU_eGFR_epi >=60, 2, 3))))
+  mutate(CKDstage = as.factor(ifelse(FU_eGFR_epi_2021 >=90, 1, ifelse(FU_eGFR_epi_2021 >=60, 2, 3))))
 Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
                        "CKD2"=(sum(data.tmp$CKDstage==2)/nrow(data.tmp))*100,
                        "CKD3"=(sum(data.tmp$CKDstage==3)/nrow(data.tmp))*100)
@@ -180,36 +188,60 @@ Nobs.CKDstages <- list("CKD1"=(sum(data.tmp$CKDstage==1)/nrow(data.tmp))*100,
 # ================================ TABLE 1: Patient characteristics at baseline ====================================
 
 # Strafied by cohort
-df.tmp <- data.frame(data.diacore[data.diacore$Time_cat == 0, ])[c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia")]
+df.tmp <- data.frame(data.diacore[data.diacore$Time_cat == 0, ])[c(pred.vars, "BL_uacr", "FU_eGFR_epi_2021", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc")]
 df.tmp$Cohort <- "Diacore"
 df.tmp$Cohort <- ifelse(df.tmp$Cohort=="0", "GCKD", ifelse(df.tmp$Cohort=="1", "PROVALID", "DIACORE"))
 
-data.tmp <- rbind(data.full[data.full$Time_cat==0,c(pred.vars, "Cohort","FU_eGFR_epi", "BL_bpsys", "BL_bpdia")], 
+data.tmp <- rbind(data.full[data.full$Time_cat==0,c(pred.vars, "Cohort", "BL_uacr","FU_eGFR_epi_2021", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc")], 
                   df.tmp)
 
-table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia"), strata="Cohort", test=F)))
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "BL_uacr", "FU_eGFR_epi_2021", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc"), strata="Cohort", test=F), nonnormal="BL_uacr"))
 
 tbl_table1 <- data.frame("Variable"=rownames(table1), table1) %>%
   `colnames<-`(c("Variable", "GCKD", "PROVALID", "DIACORE"))
 rownames(tbl_table1) <- NULL
 
-na_count <-sapply(data.tmp[,c(pred.vars, "FU_eGFR_epi", "BL_bpsys", "BL_bpdia")], 
+na_count <-sapply(data.tmp[,c(pred.vars, "BL_uacr", "FU_eGFR_epi_2021", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc")], 
                   function(y) sum(length(which(is.na(y)))))
 tbl_table1$NA.count <- c("",na_count)
 
-write.xlsx(tbl_table1, paste0(out.path, "tbl_tableone_all.xlsx"), overwrite=T)
+write.xlsx(tbl_table1, here::here(out.path, "model_main","tbl_tableone_all.xlsx"), overwrite=T)
 
 # For the development cohort in total
 data.tmp <- data.full[data.full$Time_cat==0,]
-CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi"), test=F)
-
+CreateTableOne(data=data.tmp, vars= c(pred.vars, "FU_eGFR_epi_2021"), test=F)
 
 # ========================= Median rate of eGFR decline ===========================
 
 summary(data.full[data.full$Time_cat==0 & data.full$Cohort==1,]$true.slope)  #PROVALID
 summary(data.full[data.full$Time_cat==0 & data.full$Cohort==0,]$true.slope) #GCKD
-summary(data.diacore[data.diacore$Time_cat==0,]$true.slope)
+summary(data.diacore[data.diacore$Time_cat==0,]$true.slope) # DIACORE
 
 
 # =============================== Sample size calculation ======================
 pmsampsize(type = "c", rsquared = 0.7, parameters = 13, intercept = 78.4, sd = 21.4, shrinkage = 0.99)
+
+
+# =============================== Individual observed eGFR trajectories ======================
+cols <- c("PatID", "Time_cont", "FU_eGFR_epi_2021", "Cohort")
+data.all <- data.frame(rbind(data.full[,cols], as.data.frame(data.diacore)[,cols]))
+
+set.seed(12345)
+coh0 <- sample(data.all[data.all$Cohort==0,]$PatID, 50)
+coh1 <- sample(data.all[data.all$Cohort==1,]$PatID, 50)
+coh2 <- sample(data.all[data.all$Cohort==3,]$PatID, 50)
+
+
+data.all %>%
+  filter(PatID %in% c(coh0, coh1, coh2)) %>%
+  mutate(Cohort=as.factor(as.character(Cohort))) %>%
+  ggplot(aes(x=Time_cont, y=FU_eGFR_epi_2021, group=PatID, col=Cohort)) +
+  scale_color_brewer(palette = "Set2", labels=c("GCKD","PROVALID","DIACORE")) +
+  scale_x_continuous("Follow-up in years") +
+  scale_y_continuous(name=expression(paste("eGFR  [ml/min/1.73",m^2,"]"))) +
+  geom_line() +
+  geom_point() +
+  theme_bw() +
+  theme(text=element_text(size=16))
+ggsave(here::here(out.path, "model_main", "fig_individual_slopes_sample50.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+

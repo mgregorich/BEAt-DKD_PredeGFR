@@ -14,7 +14,7 @@ source("scr/01_dataprep.R", print.eval=F)
 
 
 # =================== External predictions ======================================
-risk_model <- readRDS(paste0(out.path,"predmodel_lmerObject.rds"))
+risk_model <- readRDS(here::here(out.path, "model_main","predmodel_lmerObject.rds"))
 
 data.diacore$Time <- data.diacore$Time_cont
 data.diacore.t0 <- data.frame(data.diacore[data.diacore$Time_cat==0,])
@@ -35,13 +35,13 @@ data.diacore.new <- full_join(data.diacore, res[,c("PatID", "Time","prior.pred",
 
 # ========================= Calibration plot ===================================
 for(t in 2:7){
-  plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==t,]$prior.pred,
-                        cohort="extval", time=t, save=T, out.path = out.path, type="preUp")
-  plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi, yhat=data.diacore.new[data.diacore.new$Time==t,]$pred,
-                        cohort="extval", time=t, save=T, out.path = out.path, type="postUp")
+  plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi_2021, yhat=data.diacore.new[data.diacore.new$Time==t,]$prior.pred,
+                        cohort="extval", time=t, save=T, folder="model_main", out.path = out.path, type="preUp")
+  plot_calibration_cont(yobs=data.diacore.new[data.diacore.new$Time==t,]$FU_eGFR_epi_2021, yhat=data.diacore.new[data.diacore.new$Time==t,]$pred,
+                        cohort="extval", time=t, save=T, folder="model_main", out.path = out.path, type="postUp")
   }
 
-ggplot(data.diacore.new[data.diacore.new$Time_cat <=5,], aes(x=pred, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
+ggplot(data.diacore.new[data.diacore.new$Time_cat <=5,], aes(x=pred, y=FU_eGFR_epi_2021, fill=Time_cont, col=Time_cont)) +
   geom_point() +
   scale_x_continuous(expand = c(0, 0), name = expression(paste("Predicted eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) + 
   scale_y_continuous(expand = c(0, 0), name = expression(paste("Observed eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) +
@@ -50,25 +50,38 @@ ggplot(data.diacore.new[data.diacore.new$Time_cat <=5,], aes(x=pred, y=FU_eGFR_e
   geom_abline(intercept = 0) + 
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), text=element_text(size=22)) 
-ggsave(paste0(out.path, "fig_calibration_all_diacore_post.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_calibration_all_diacore_post.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
-df <- melt(data.diacore.new[data.diacore.new$Time_cat <=5 ,c("Time_cont","FU_eGFR_epi", "pred","prior.pred")], id.vars = c("Time_cont", "FU_eGFR_epi"))
+df <- melt(data.diacore.new[data.diacore.new$Time_cat <=5 ,c("Time_cont","FU_eGFR_epi_2021", "pred","prior.pred")], id.vars = c("Time_cont", "FU_eGFR_epi_2021"))
 levels(df$variable) <- c("Post-update", "Pre-update")
 df$variable <- relevel(df$variable, "Pre-update")
 df <- df[df$Time_cont>0,]
 
-ggplot(df, aes(x=value, y=FU_eGFR_epi, fill=Time_cont, col=Time_cont)) +
+ggplot(df, aes(x=value, y=FU_eGFR_epi_2021, fill=Time_cont, col=Time_cont)) +
   geom_point() +
   scale_x_continuous(expand = c(0, 0), name = expression(paste("Predicted eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) + 
   scale_y_continuous(expand = c(0, 0), name = expression(paste("Observed eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) +
   scale_color_continuous("Time") +
   scale_fill_continuous("Time") +
   geom_abline(intercept = 0) + 
-  
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5), text=element_text(size=16), strip.text = element_text(size = 18)) +
   facet_wrap(~variable)
-ggsave(paste0(out.path, "fig_calibration_all_diacore_prepost.tiff"),  width=12, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_calibration_all_diacore_prepost.tiff"),  width=12, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_calibration_all_diacore_post.wmf"),  width=8, height=6, dpi=350)
+
+# df$Time_cat <- paste0("Time = ", round(df$Time_cont,0))
+# ggplot(df, aes(x=value, y=FU_eGFR_epi_2021)) +
+#   geom_point(col="grey26") +
+#   scale_x_continuous(expand = c(0, 0), name = expression(paste("Predicted eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) + 
+#   scale_y_continuous(expand = c(0, 0), name = expression(paste("Observed eGFR  [ml/min/1.73",m^2,"]")), limits = c(0,150)) +
+#   scale_color_continuous("Time") +
+#   scale_fill_continuous("Time") +
+#   geom_abline(intercept = 0) + 
+#   theme_bw() +
+#   theme(plot.title = element_text(hjust = 0.5), text=element_text(size=16), strip.text = element_text(size = 16)) +
+#   facet_grid(Time_cat~variable)
+# ggsave(here::here(out.path, "model_main", "fig_calibration_all_diacore_prepost_panel.tiff"),  width=12, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 
@@ -88,7 +101,7 @@ res_ext_boot <- future_lapply(1:b, function(x){
   data.boot.new <- full_join(data.boot, res[,c("PatID", "Time","prior.pred","pred", "pred.lo", "pred.up", "pred.slope", "pred.slope.lo", "pred.slope.up","pred.prob")], by=c("PatID", "Time"))
   
   data.boot.list <- split(data.boot.new, as.factor(data.boot.new$Time)) 
-  res <- lapply(data.boot.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi, lmerObject=risk_model))
+  res <- lapply(data.boot.list, function(x) eval_preds(pred=x$pred, obs=x$FU_eGFR_epi_2021, lmerObject=risk_model))
   df.res <- data.frame("Boot"=x,"Time"=as.numeric(names(res)), do.call(rbind, res))
   
   return(df.res)
@@ -134,16 +147,16 @@ tbl_performance[[4]] <-df.tmp %>%
   dplyr::select(Time, N, N.ci, R2, R2.ci, C, C.ci, CS, CS.ci) 
 
 names(tbl_performance) <- c("avg", "ci.lo", "ci.up", "reported")
-write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval_full.xlsx"), overwrite = T)
+write.xlsx(tbl_performance, here::here(out.path, "model_main","tbl_perform_extval_full.xlsx"), overwrite = T)
 
 
 # tbl_tmp <- lapply(sort(unique(data.diacore.new$Time)), function(x) eval_preds(pred=data.diacore.new[data.diacore.new$Time==x,]$pred, 
-#                                                                               obs=data.diacore.new[data.diacore.new$Time==x,]$FU_eGFR_epi, 
+#                                                                               obs=data.diacore.new[data.diacore.new$Time==x,]$FU_eGFR_epi_2021, 
 #                                                                               lmerObject = risk_model))
 # time.perf <- data.frame("Time"=sort(unique(data.diacore.new$Time)),round(do.call(rbind, tbl_tmp),3))
-# ov.perf <- eval_preds(data.diacore.new[!data.diacore.new$Time==0,]$pred, data.diacore.new[!data.diacore.new$Time==0,]$FU_eGFR_epi, lmerObject = risk_model)
+# ov.perf <- eval_preds(data.diacore.new[!data.diacore.new$Time==0,]$pred, data.diacore.new[!data.diacore.new$Time==0,]$FU_eGFR_epi_2021, lmerObject = risk_model)
 # tbl_performance <- list("overall"=ov.perf, "time-specific"=time.perf)
-# write.xlsx(tbl_performance, paste0(out.path, "tbl_perform_extval.xlsx"), overwrite = TRUE)
+# write.xlsx(tbl_performance, here::here(out.path, "model_main", "tbl_perform_extval.xlsx"), overwrite = TRUE)
 
 
 
@@ -156,13 +169,13 @@ ggplot(data.diacore.new.t0, aes(x=pred.prob)) +
   scale_y_continuous(expand=c(0,0),"Density") +
   theme_bw() +
   theme(text = element_text(size=18), legend.position = "bottom", legend.title = element_blank()) 
-ggsave(paste0(out.path, "fig_prob_progression_SC",abs(slope_cutpoint),"_extval.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_prob_progression_SC",abs(slope_cutpoint),"_extval.wmf"),  width=8, height=6,  dpi=350, compression = 'lzw')
 
 
 
 # ========================== Subject-specific trajectories =====================
 set.seed(666)
-df.melt <- melt(data.diacore.new[,c("PatID","Time", "FU_eGFR_epi","pred", "pred.lo", "pred.up")], id.vars = c("PatID","Time", "pred.lo", "pred.up"))
+df.melt <- melt(data.diacore.new[,c("PatID","Time", "FU_eGFR_epi_2021","pred", "pred.lo", "pred.up")], id.vars = c("PatID","Time", "pred.lo", "pred.up"))
 df.melt.small <- df.melt[df.melt$PatID %in% c(sample(unique(df.melt$PatID),16)),]
 
 ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
@@ -177,24 +190,24 @@ ggplot(data =df.melt.small, aes(x = Time, y = value,  col=variable)) +
   theme_bw() +
   facet_wrap(~PatID) +
   theme(legend.position = "bottom", legend.title = element_blank(), text=element_text(size=16))
-ggsave(paste0(out.path, "fig_indvPred_eGFR_diacore_extval.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_indvPred_eGFR_diacore_extval.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 
 
 
 # ====================  Visualization of time-specific performance measures  ====
-tbl_tmp.est <- read.xlsx(paste0(out.path, "tbl_perform_val_full.xlsx"), sheet=1) %>%
+tbl_tmp.est <- read.xlsx(here::here(out.path, "model_main", "tbl_perform_val_full.xlsx"), sheet=1) %>%
   dplyr::select(Time, R2, C, CalbSlope) %>%
   filter(!Time %in% "Overall") %>%
   mutate(type="est") %>%
   rename(CS=CalbSlope)
 
-tbl_tmp.lo <- read.xlsx(paste0(out.path, "tbl_perform_val_full.xlsx"), sheet=2) %>%
+tbl_tmp.lo <- read.xlsx(here::here(out.path, "model_main","tbl_perform_val_full.xlsx"), sheet=2) %>%
   dplyr::select(Time, R2, C, CalbSlope) %>%
   filter(!Time %in% "Overall") %>%
   mutate(type="lo") %>%
   rename(CS=CalbSlope)
 
-tbl_tmp.up <- read.xlsx(paste0(out.path, "tbl_perform_val_full.xlsx"), sheet=3)%>%
+tbl_tmp.up <- read.xlsx(here::here(out.path, "model_main", "tbl_perform_val_full.xlsx"), sheet=3)%>%
   dplyr::select(Time, R2, C, CalbSlope) %>%
   filter(!Time %in% "Overall") %>%
   mutate(type="up") %>%
@@ -229,5 +242,5 @@ ggplot(tbl_new, aes(x=Time, y=est, group=tmp, col=tmp, fill=variable)) +
   scale_color_manual(values=c("dodgerblue2","dodgerblue4", "mediumseagreen","seagreen", "red2","red4"),guide="none") +
   theme_bw() +
   theme(text = element_text(size=16), legend.position = "top")
-ggsave(paste0(out.path, "fig_performance_dev_ext.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
+ggsave(here::here(out.path, "model_main", "fig_performance_dev_ext.tiff"),  width=8, height=6, device='tiff', dpi=350, compression = 'lzw')
 

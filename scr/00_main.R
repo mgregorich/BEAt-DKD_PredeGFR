@@ -26,3 +26,6 @@ source("scr/05_externalval.R", print.eval=F)
 
 # Sensitivity analysis
 source("scr/06_sensitivity_analysis.R", print.eval=F)
+
+# Model comparison
+source("scr/07_add_models.R", print.eval=F)

@@ -7,10 +7,17 @@
 
 
 # ============= TRIPOD flowchart setup=============================
-tripod_flowchart <- data.frame("Step"=c("all",  "excl2_baseunder30",  "excl3_nobase", "excl1_not3eGFR","post_excl","completecases","DevCohort"), 
-                        "GCKD"=rep(NA,7), 
-                        "PROVALID"=rep(NA,7),
-                        "DIACORE"=rep(NA,7))
+tripod_flowchart <- data.frame("Step"=c("all", 
+                                        "lack_var", 
+                                        "excl2_baseunder30",  
+                                        "excl3_nobase", 
+                                        "excl1_not3eGFR",
+                                        "post_excl",
+                                        "completecases",
+                                        "DevCohort"), 
+                        "GCKD"=rep(NA,8), 
+                        "PROVALID"=rep(NA,8),
+                        "DIACORE"=rep(NA,8))
 
 
 
@@ -47,14 +54,14 @@ data.diacore <- data.diacore %>%
 
 data.diacore <- merged.stack(data.diacore, id.vars="patNr", var.stubs=c("eGFR_CKDEPI"), sep = "_V") 
 data.diacore$.time_1 <- as.numeric(data.diacore$.time_1)-1
-colnames(data.diacore) <- c("PatID", "Time_cat","FU_eGFR_epi", "Cohort", "Country","BL_age", "BL_sex", "BL_smoking","BL_bmi",
+colnames(data.diacore) <- c("PatID", "Time_cat","FU_eGFR_epi_2021", "Cohort", "Country","BL_age", "BL_sex", "BL_smoking","BL_bmi",
                             "BL_map", "BL_bpsys", "BL_bpdia","BL_uacr", "BL_hba1c_perc", "BL_serumchol","BL_hemo", 
                             "BL_med_lipid", "BL_med_bp", "BL_med_dm", "FU0_date", "FU1_date", "FU2_date")
 data.diacore <- data.diacore %>%
   mutate(BL_uacr_log2 =log(data.diacore$BL_uacr, 2),
          BL_hba1c = (BL_hba1c_perc-2.15) * 10.929) %>%
   mutate_at(vars(BL_med_bp, BL_med_dm, BL_med_lipid), ~as.factor(.)) %>%
-  filter(!(is.na(FU_eGFR_epi) & (Time_cat %in% c(1,2)))) %>%
+  filter(!(is.na(FU_eGFR_epi_2021) & (Time_cat %in% c(1,2)))) %>%
   mutate(Time_cont=0)
 
 data.diacore$Time_cont=ifelse((data.diacore$Time_cat==1), round(difftime(data.diacore$FU1_date,data.diacore$FU0_date,units="days")/365.25,3), data.diacore$Time_cont)
@@ -62,7 +69,7 @@ data.diacore$Time_cont=ifelse((data.diacore$Time_cat==2), round(difftime(data.di
 data.diacore$Time_cat= round(data.diacore$Time_cont)
 
 data.diacore <- data.diacore %>%
-  dplyr::select(PatID, Time_cat, Time_cont, FU_eGFR_epi, Cohort, Country, BL_age, BL_sex, BL_smoking, BL_bmi, BL_map, BL_bpsys,     
+  dplyr::select(PatID, Time_cat, Time_cont, FU_eGFR_epi_2021, Cohort, Country, BL_age, BL_sex, BL_smoking, BL_bmi, BL_map, BL_bpsys,     
                BL_bpdia, BL_uacr, BL_hba1c_perc, BL_serumchol, BL_hemo, BL_med_lipid, BL_med_bp, BL_med_dm, BL_uacr_log2, BL_hba1c)
 
 
@@ -78,19 +85,26 @@ data.gckd <- data.gckd %>%
          FU6_age = as.numeric(BL_age + round((FU6_fu_visdat-BL_ein_visdat)/365.25,0)),
          BL_sex = BL_gender,
          BL_gender = ifelse(BL_gender==1, "F", "M")) %>%
-  mutate(BL_eGFR_epi = ckd_epi(creat = BL_creavalue, age = BL_age, sex = BL_gender, eth = eth, units = "US"),
-         FU2_eGFR_epi = ckd_epi(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, eth = eth, units = "US"),
-         FU3_eGFR_epi = ckd_epi(creat = FU3_creavalue, age = FU3_age, sex = BL_gender, eth = eth, units = "US"),
-         FU4_eGFR_epi = ckd_epi(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, eth = eth, units = "US"),
-         FU5_eGFR_epi = ckd_epi(creat = FU5_creavalue, age = FU5_age, sex = BL_gender, eth = eth, units = "US"),
-         FU6_eGFR_epi = ckd_epi(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, eth = eth, units = "US"),
+  mutate(BL_eGFR_epi_2009 = ckd_epi(creat = BL_creavalue, age = BL_age, sex = BL_gender, eth = eth, units = "US"),
+         FU2_eGFR_epi_2009 = ckd_epi(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, eth = eth, units = "US"),
+         FU3_eGFR_epi_2009 = ckd_epi(creat = FU3_creavalue, age = FU3_age, sex = BL_gender, eth = eth, units = "US"),
+         FU4_eGFR_epi_2009 = ckd_epi(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, eth = eth, units = "US"),
+         FU5_eGFR_epi_2009 = ckd_epi(creat = FU5_creavalue, age = FU5_age, sex = BL_gender, eth = eth, units = "US"),
+         FU6_eGFR_epi_2009 = ckd_epi(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, eth = eth, units = "US"),
+         BL_eGFR_epi_2021 = ckd_epi_2021(creat = BL_creavalue, age = BL_age, sex = BL_gender, units = "US"),
+         FU2_eGFR_epi_2021 = ckd_epi_2021(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, units = "US"),
+         FU3_eGFR_epi_2021 = ckd_epi_2021(creat = FU3_creavalue, age = FU3_age, sex = BL_gender, units = "US"),
+         FU4_eGFR_epi_2021 = ckd_epi_2021(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, units = "US"),
+         FU5_eGFR_epi_2021 = ckd_epi_2021(creat = FU5_creavalue, age = FU5_age, sex = BL_gender, units = "US"),
+         FU6_eGFR_epi_2021 = ckd_epi_2021(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, units = "US"),
          BL_eGFR_mdrd = mdrd(creat = BL_creavalue, age = BL_age, sex = BL_gender, eth = eth, units = "US"),
          FU2_eGFR_mdrd = mdrd(creat = FU2_creavalue, age = FU2_age, sex = BL_gender, eth = eth, units = "US"),
          FU4_eGFR_mdrd = mdrd(creat = FU4_creavalue, age = FU4_age, sex = BL_gender, eth = eth, units = "US"),
          FU6_eGFR_mdrd = mdrd(creat = FU6_creavalue, age = FU6_age, sex = BL_gender, eth = eth, units = "US"),
          PatID=as.character(subjid),
          Country="GE",
-         BL_smoking = ifelse(BL_smoking == 0, 0, 1)) %>%
+         BL_smoking = ifelse(BL_smoking == 0, 0, 1),
+         BL_crea = BL_creavalue) %>%
   dplyr::rename(BL_bpsys = BL_bloodpr_sys,
                 BL_bpdia = BL_bloodpr_dias,
                 BL_hemo = BL_hemovalue,
@@ -99,12 +113,20 @@ data.gckd <- data.gckd %>%
                 BL_serumchol = BL_cholvalue1,
                 BL_med_lipid = BL_med_lipidsenker) 
 
-data.gckd.long <- data.gckd %>%
-  dplyr::select(PatID, BL_eGFR_epi, FU2_eGFR_epi, FU3_eGFR_epi, FU4_eGFR_epi, FU5_eGFR_epi, FU6_eGFR_epi) %>%
+data.gckd.long.2021 <- data.gckd %>%
+  dplyr::select(PatID, BL_eGFR_epi_2021, FU2_eGFR_epi_2021, FU3_eGFR_epi_2021, FU4_eGFR_epi_2021, FU5_eGFR_epi_2021, FU6_eGFR_epi_2021) %>%
   `colnames<-`(c("PatID","0","2","3","4","5","6")) %>%
-  pivot_longer(cols=2:7, names_to = "Time_cat", values_to = "FU_eGFR_epi") %>%
+  pivot_longer(cols=2:7, names_to = "Time_cat", values_to = "FU_eGFR_epi_2021") %>%
   mutate(Cohort="GCKD") %>%
-  filter(!is.na(FU_eGFR_epi)) %>%
+  filter(!is.na(FU_eGFR_epi_2021)) %>%
+  mutate(Time_cat=as.numeric(Time_cat))
+
+data.gckd.long.2009 <- data.gckd %>%
+  dplyr::select(PatID, BL_eGFR_epi_2009, FU2_eGFR_epi_2009, FU3_eGFR_epi_2009, FU4_eGFR_epi_2009, FU5_eGFR_epi_2009, FU6_eGFR_epi_2009) %>%
+  `colnames<-`(c("PatID","0","2","3","4","5","6")) %>%
+  pivot_longer(cols=2:7, names_to = "Time_cat", values_to = "FU_eGFR_epi_2009") %>%
+  mutate(Cohort="GCKD") %>%
+  filter(!is.na(FU_eGFR_epi_2009)) %>%
   mutate(Time_cat=as.numeric(Time_cat))
 
 data.gckd.date <- data.gckd %>%
@@ -115,7 +137,15 @@ data.gckd.date <- data.gckd %>%
   mutate(Time_cat=as.numeric(Time_cat))
 
 
-data.gckd <- right_join(data.gckd, left_join(data.gckd.long, data.gckd.date, by=c("PatID","Time_cat")), by="PatID")
+data.gckd.long <- full_join(data.gckd.long.2009, data.gckd.long.2021, by=c("PatID", "Time_cat", "Cohort"))
+# ggplot(data = data.gckd.long[data.gckd.long$Time_cat==0,], aes(x=FU_eGFR_epi_2021, y=FU_eGFR_epi_2009)) +
+#   geom_point() +
+#   geom_abline(xintercept = 0, col="red")+
+#   theme_bw()
+
+
+
+data.gckd <- right_join(data.gckd, left_join(data.gckd.long.2021, data.gckd.date, by=c("PatID","Time_cat")), by="PatID")
 data.gckd <- data.gckd %>% 
   mutate(Time_cont = round(difftime(FU_date,BL_ein_visdat,units="days")/365.25,3))
 data.gckd$Time_cat <- round(data.gckd$Time_cont)
@@ -141,11 +171,14 @@ bp.meds <- c("ACE inhibitors", "Renin inhibitors","Angiotensin-II-receptor block
              "Centrally acting antihypertensives", "Alpha-receptor blockers","Direct vasodilators","Loop diuretics", "Thiazides",
              "Potassium saving diuretics", "Aldosterone antagonists")
 lip.meds <- c("Clofibric acid derivative", "Statins", "Others (ezetimibe, omega 3 acid)")
+raas <- c("ACE inhibitors", "Renin inhibitors","Angiotensin-II-receptor blockers")
 
 data.tmp1 <- read_excel(file, sheet=1)[,c(clin.cols, gluc.meds, bp.meds, lip.meds)]
 data.tmp1$BL_med_dm <- apply(data.tmp1[,gluc.meds],1, function(x) any(!is.na(x)))*1
 data.tmp1$BL_med_bp <- apply(data.tmp1[,bp.meds],1, function(x) any(!is.na(x)))*1
 data.tmp1$BL_med_lipid <- apply(data.tmp1[,lip.meds],1, function(x) any(!is.na(x)))*1
+data.tmp1$BL_raas <- apply(data.tmp1[,raas],1, function(x) any(!is.na(x)))*1
+
 data.tmp1$baseline_date <- data.tmp1$`Date of visit [yyyy/mm/dd]`
 
 data.tmp2 <- read_excel(file, sheet=2)[,lab.cols]
@@ -178,8 +211,11 @@ data.provalid <- data.provalid  %>%
          BL_hba1c = ifelse(is.na(hb_a1c_mmol_l), ((hb_a1c_percent-2.15) * 10.929), hb_a1c_mmol_l),
          eth = "non-black",
          FU_age = round(BL_age + as.numeric(data.provalid$time),0),
-         FU_eGFR_epi = ckd_epi(creat = data.provalid$fu_serumcrea, age = FU_age, sex = BL_gender, eth = eth, units = "US"),
-         BL_eGFR_epi = ckd_epi(creat = serum_creatinine_mg_dl, age = BL_age, sex=BL_gender, ethnicity = eth, units="US"),
+         FU_eGFR_epi_2009 = ckd_epi(creat = data.provalid$fu_serumcrea, age = FU_age, sex = BL_gender, eth = eth, units = "US"),
+         BL_eGFR_epi_2009 = ckd_epi(creat = serum_creatinine_mg_dl, age = BL_age, sex=BL_gender, ethnicity = eth, units="US"),
+         FU_eGFR_epi_2021 = ckd_epi_2021(creat = data.provalid$fu_serumcrea, age = FU_age, sex = BL_gender, units = "US"),
+         BL_eGFR_epi_2021 = ckd_epi_2021(creat = serum_creatinine_mg_dl, age = BL_age, sex=BL_gender, units="US"),
+         BL_crea =serum_creatinine_mg_dl,
          Cohort="PROVALID",
          PatID=as.character(patient_reference_id),
          Country= str_sub(data.provalid$country, -2,-1),
@@ -190,10 +226,12 @@ data.provalid <- data.provalid  %>%
                 BL_med_lipid = bl_med_lipid,
                 BL_med_bp = bl_med_bp,
                 BL_med_dm = bl_med_dm,
+                BL_raas = bl_raas,
                 FU_date=date_yyyy_mm_dd_10) %>%
-  dplyr::select(PatID, Time_cat, Time_cont, Country, Cohort, FU_date, baseline_date, FU_eGFR_epi, BL_age, BL_sex, BL_smoking, BL_bmi, 
+  dplyr::select(PatID, Time_cat, Time_cont, Country, Cohort, FU_date, baseline_date, FU_eGFR_epi_2009,FU_eGFR_epi_2021, BL_crea,
+                BL_age, BL_sex, BL_smoking, BL_bmi, 
          BL_uacr, BL_hemo, BL_serumchol, BL_hba1c_perc, BL_hba1c, BL_bpsys, BL_bpdia,
-         BL_med_bp, BL_med_lipid, BL_med_dm) %>%
+         BL_med_bp, BL_med_lipid, BL_med_dm, BL_raas) %>%
   filter(!Time_cat < 0)
 
 # Delete duplicated rows with Time_cat == 0 (only one baseline!) - take closest to 0
@@ -205,26 +243,30 @@ tmp1 <- tmp %>%
 tmp1$Time_cont <- 0
 
 data.provalid <- data.frame(rbind(tmp1, anti_join(data.provalid, tmp)))
+tripod_flowchart$PROVALID[1] <- length(unique(data.provalid$PatID))
 data.provalid <- data.provalid[!data.provalid$Country %in% "NL",]
-  
+data.provalid.raas <- data.provalid[,c("PatID", "Cohort","Country","Time_cat","Time_cont","FU_date","BL_raas")]
+
 
 # =========================== Merge datasets  ==================================
-cols <- c("PatID", "Cohort","Country","Time_cat","Time_cont","FU_date", "FU_eGFR_epi","BL_age", "BL_sex", "BL_smoking",
+cols <- c("PatID", "Cohort","Country","Time_cat","Time_cont","FU_date", "FU_eGFR_epi_2021", "BL_age", "BL_sex", "BL_smoking",
           "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_hba1c_perc", "BL_serumchol", "BL_hemo", "BL_uacr", "BL_med_dm", "BL_med_bp", "BL_med_lipid")
-
+  
 data.all <- rbind(data.provalid[,cols], data.gckd[,cols])
 data.all$Time_cont[data.all$Time_cont <0] <-0
 data.all$Time_cat[data.all$Time_cat <=0] <-0
 data.all$Time_cont[data.all$Time_cat ==0] <-0
 
-tripod_flowchart$PROVALID[1] <- length(unique(data.all[data.all$Cohort %in% "PROVALID",]$PatID))
 tripod_flowchart$GCKD[1] <- length(unique(data.all[data.all$Cohort %in% "GCKD",]$PatID))
 tripod_flowchart$DIACORE[1] <- length(unique(data.diacore$PatID))
 
+# Lack of data in the NL cohort
+tripod_flowchart$PROVALID[2] <- tripod_flowchart$PROVALID[1]-length(unique(data.all[data.all$Cohort %in% "PROVALID",]$PatID))
+tripod_flowchart$GCKD[2] <- tripod_flowchart$DIACORE[2] <- 0
 
 data.all <- data.all %>%
   mutate(BL_uacr_log2=log(BL_uacr,2)) %>%
-  mutate_at(c("Time_cat","Time_cont","FU_eGFR_epi", "BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr"),as.numeric) %>%
+  mutate_at(c("Time_cat","Time_cont","FU_eGFR_epi_2021", "BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr"),as.numeric) %>%
   mutate_at(c("Cohort", "Country", "BL_sex", "BL_smoking", "BL_med_dm", "BL_med_bp", "BL_med_lipid"), as.factor) %>%
   mutate_at(c("BL_age", "BL_bmi", "BL_bpsys", "BL_bpdia", "BL_hba1c", "BL_serumchol", "BL_hemo", "BL_uacr",  "BL_uacr_log2"),
             ~pmin(pmax(.x, quantile(.x, .01, na.rm=T)), quantile(.x, .99, na.rm=T)))
@@ -240,30 +282,30 @@ data.all <- data.all %>%
          BL_hemo=to_numeric(BL_hemo))              # Sorts out values in wrong unit column (g/l instead of g/dL)
 
 # Exclude Patients that fall below 30 at baseline
-excl_patid_1 <- data.all[data.all$Time_cat==0 & data.all$FU_eGFR_epi <31,]$PatID
-tripod_flowchart$PROVALID[2] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_1,]$PatID))
-tripod_flowchart$GCKD[2] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_1,]$PatID))
+excl_patid_1 <- data.all[data.all$Time_cat==0 & data.all$FU_eGFR_epi_2021 <31,]$PatID
+tripod_flowchart$PROVALID[3] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_1,]$PatID))
+tripod_flowchart$GCKD[3] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_1,]$PatID))
 
-drop.egfr30 <- unique(data.diacore[(data.diacore$Time_cat==0 & data.diacore$FU_eGFR_epi < 31),]$PatID)
-tripod_flowchart$DIACORE[2] <- length(drop.egfr30)
+drop.egfr30 <- unique(data.diacore[(data.diacore$Time_cat==0 & data.diacore$FU_eGFR_epi_2021 < 31),]$PatID)
+tripod_flowchart$DIACORE[3] <- length(drop.egfr30)
 
 # Exclude patients with no baseline value
 df.time <- as.data.frame.matrix(table(data.all$PatID, data.all$Time_cat))
 excl_patid_2 <- rownames(df.time[df.time$`0` == 0,])
-tripod_flowchart$PROVALID[3] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_2,]$PatID))
-tripod_flowchart$GCKD[3] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_2,]$PatID))
+tripod_flowchart$PROVALID[4] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_2,]$PatID))
+tripod_flowchart$GCKD[4] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_2,]$PatID))
 
-drop.nobaseline <- data.diacore[data.diacore$Time_cat == 0 & is.na(data.diacore$FU_eGFR_epi),]$PatID
-tripod_flowchart$DIACORE[3] <- length(drop.nobaseline)
+drop.nobaseline <- data.diacore[data.diacore$Time_cat == 0 & is.na(data.diacore$FU_eGFR_epi_2021),]$PatID
+tripod_flowchart$DIACORE[4] <- length(drop.nobaseline)
 
 # Only consider patients with more than 2 visits
 rec.visits <- apply(as.data.frame.matrix(table(data.all$PatID, data.all$Time_cat)),1, sum)
 excl_patid_3 <- unique(names(which(rec.visits <3)))
-tripod_flowchart$PROVALID[4] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_3,]$PatID))
-tripod_flowchart$GCKD[4] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_3,]$PatID))
+tripod_flowchart$PROVALID[5] <- length(unique(data.provalid[data.provalid$PatID %in% excl_patid_3,]$PatID))
+tripod_flowchart$GCKD[5] <- length(unique(data.gckd[data.gckd$PatID %in% excl_patid_3,]$PatID))
 
 drop.fu3 <- names(which(table(data.diacore$PatID) < 3))
-tripod_flowchart$DIACORE[4] <- length(drop.fu3)
+tripod_flowchart$DIACORE[5] <- length(drop.fu3)
 
 
 # Remove
@@ -272,16 +314,49 @@ data.diacore <- data.diacore %>%
   filter(!(PatID %in% drop.egfr30 | PatID %in% drop.fu3))
 
 
-tripod_flowchart$PROVALID[5] <- length(unique(data.all[data.all$Cohort==1,]$PatID))
-tripod_flowchart$GCKD[5] <- length(unique(data.all[data.all$Cohort==0,]$PatID))
-tripod_flowchart$DIACORE[5] <- length(unique(data.diacore$PatID))
+tripod_flowchart$PROVALID[6] <- length(unique(data.all[data.all$Cohort==1,]$PatID))
+tripod_flowchart$GCKD[6] <- length(unique(data.all[data.all$Cohort==0,]$PatID))
+tripod_flowchart$DIACORE[6] <- length(unique(data.diacore$PatID))
 
 
 
 # =========================== Complete-cases ===================================
 
-data.diacore %>%
+
+
+# Patient characteristics prior to complete case analysis
+
+df.tmp <- data.frame(data.diacore[data.diacore$Time_cat == 0, ])[c(pred.vars, "BL_uacr", "FU_eGFR_epi_2021", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc")]
+df.tmp$Cohort <- "Diacore"
+df.tmp$Cohort <- ifelse(df.tmp$Cohort=="0", "GCKD", ifelse(df.tmp$Cohort=="1", "PROVALID", "DIACORE"))
+
+data.tmp <- rbind(data.all[data.all$Time_cat==0,c(pred.vars, "Cohort", "BL_uacr", "FU_eGFR_epi_2021", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc")], 
+                  df.tmp)
+
+table1 <- as.data.frame.matrix(print(CreateTableOne(data=data.tmp, vars= c(pred.vars, "BL_uacr", "FU_eGFR_epi_2021", "BL_bpsys", "BL_bpdia", "BL_hba1c_perc"), strata="Cohort", test=F), nonnormal="BL_uacr"))
+tbl_table1 <- data.frame("Variable"=rownames(table1), table1) %>%
+  `colnames<-`(c("Variable", "GCKD", "PROVALID", "DIACORE"))
+rownames(tbl_table1) <- NULL
+
+list.str <- strsplit(gsub("[()]", "", str_trim(tbl_table1[which(str_detect(tbl_table1$Variable, "mean")),]$GCKD, "left")), "\\s+")
+tbl_table1[which(str_detect(tbl_table1$Variable, "mean")),]$GCKD <- unlist(lapply(list.str, function(x) paste0(x[1], " \U00B1 ", x[2])))
+list.str <- strsplit(gsub("[()]", "", str_trim(tbl_table1[which(str_detect(tbl_table1$Variable, "mean")),]$PROVALID, "left")), "\\s+")
+tbl_table1[which(str_detect(tbl_table1$Variable, "mean")),]$PROVALID <- unlist(lapply(list.str, function(x) paste0(x[1], " \U00B1 ", x[2])))
+list.str <- strsplit(gsub("[()]", "", str_trim(tbl_table1[which(str_detect(tbl_table1$Variable, "mean")),]$DIACORE, "left")), "\\s+")
+tbl_table1[which(str_detect(tbl_table1$Variable, "mean")),]$DIACORE <- unlist(lapply(list.str, function(x) paste0(x[1], " \U00B1 ", x[2])))
+
+write.xlsx(tbl_table1, here::here(out.path, "model_main","tbl_tableone_before_completecaseanalysis.xlsx"), overwrite=T)
+
+tmp.diacore <- data.diacore %>%
   filter(Time_cat==0) %>%
+  skim()
+
+tmp.gckd <- data.all %>%
+  filter(Time_cat==0 & Cohort == 0) %>%
+  skim()
+
+tmp.provalid <- data.all %>%
+  filter(Time_cat==0 & Cohort == 1) %>%
   skim()
 
 data.full <- data.all[complete.cases(data.all),]
@@ -296,13 +371,13 @@ table(data.all[data.all$Time_cat==0,]$Country)
 table(data.full[data.full$Time_cat==0,]$Country)
 table(data.rem[data.rem$Time_cat==0,]$Country)
 
-tripod_flowchart$PROVALID[6] <- length(unique(data.full[data.full$Cohort==1,]$PatID))
-tripod_flowchart$GCKD[6] <- length(unique(data.full[data.full$Cohort==0,]$PatID))
-tripod_flowchart$DIACORE[6] <- length(unique(data.diacore$PatID))
-
-tripod_flowchart$PROVALID[7] <- length(unique(data.full$PatID))
-tripod_flowchart$GCKD[7] <- length(unique(data.full$PatID))
+tripod_flowchart$PROVALID[7] <- length(unique(data.full[data.full$Cohort==1,]$PatID))
+tripod_flowchart$GCKD[7] <- length(unique(data.full[data.full$Cohort==0,]$PatID))
 tripod_flowchart$DIACORE[7] <- length(unique(data.diacore$PatID))
+
+tripod_flowchart$PROVALID[8] <- length(unique(data.full$PatID))
+tripod_flowchart$GCKD[8] <- length(unique(data.full$PatID))
+tripod_flowchart$DIACORE[8] <- length(unique(data.diacore$PatID))
 
 tripod_flowchart
 
@@ -312,7 +387,7 @@ tripod_flowchart
 # Development cohort
 df.tmp <- data.full %>%
   group_by(PatID) %>%
-  summarise(eGFRslope=summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2]) %>%
+  summarise(eGFRslope=summary(lm(FU_eGFR_epi_2021 ~ Time_cont))$coefficients[2]) %>%
   data.frame() %>%
   `colnames<-`(c("PatID", "true.slope"))
 data.full <- left_join(data.full, df.tmp, by="PatID")
@@ -321,8 +396,18 @@ data.full$true.prob <- (data.full$true.slope <= slope_cutpoint)*1
 # Validation cohort
 df.tmp <- data.diacore %>%
   group_by(PatID) %>%
-  summarise(eGFRslope=summary(lm(FU_eGFR_epi ~ Time_cont))$coefficients[2]) %>%
+  summarise(eGFRslope=summary(lm(FU_eGFR_epi_2021 ~ Time_cont))$coefficients[2]) %>%
   data.frame() %>%
   `colnames<-`(c("PatID", "true.slope"))
 data.diacore <- left_join(data.diacore, df.tmp, by="PatID")
 data.diacore$true.prob <- (data.diacore$true.slope <= slope_cutpoint)*1
+
+data.model <- list("development"=data.full, "validation"=data.diacore)
+saveRDS(data.model, here::here(out.path, "data", "cohort_data_model.rds"))
+
+# ==== Save PROVALID with RAAS ====
+
+data.provalid.withRAAS <- left_join(data.full[data.full$Cohort==1,], data.provalid.raas, by=c("PatID", "Country","Time_cat","Time_cont")) 
+data.provalid.withRAAS <- data.provalid.withRAAS[complete.cases(data.provalid.withRAAS$BL_raas),]
+
+saveRDS(data.provalid.withRAAS, here::here(out.path, "data", "cohort_data_provalid_raas.rds"))
