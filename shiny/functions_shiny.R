@@ -72,9 +72,11 @@ plot_eGFRslopeDistribution <- function(distr.slopes, dens.slopes, pred.slope){
   return(list("plot"=p, "prob"=prob))
 }
 
-plot_trajectory <- function(x){
+plot_trajectory <- function(df){
+  max.95 <- as.numeric(max(df$pred.up.95, na.rm = T)-5)
+  max.50 <- as.numeric(max(df$pred.up.50, na.rm = T)-5)
   
-  p1 <- ggplot2::ggplot(x, ggplot2::aes(x=Time, y=pred)) +
+  p1 <- ggplot2::ggplot(df, ggplot2::aes(x=Time, y=pred)) +
     ggplot2::geom_point(ggplot2::aes(colour="Predicted eGFR"),size=5, shape=8)  +
     ggplot2::geom_point(ggplot2::aes(x=0, y=BaseGFR, colour="Observed eGFR"), shape=8, size=5) +
     ggplot2::geom_line() +
@@ -86,6 +88,8 @@ plot_trajectory <- function(x){
     ggplot2::scale_x_continuous("Follow-up time (in years)", 
                                 limits = c(0, 5), breaks = seq(0, 10, 1)) +
     ggplot2::scale_y_continuous(expression(paste("eGFR (mL/min/1.73 ", m^2, ")")), breaks=seq(0,150,10)) +
+    ggplot2::annotate(geom="text", x=3, y=max.95, label="95% prediction interval") +
+    ggplot2::annotate(geom="text", x=3, y=max.50, label="50% prediction interval") +
     ggplot2::theme_bw() +
     ggplot2::theme(text = ggplot2::element_text(size=20), legend.position = "top")
   p1

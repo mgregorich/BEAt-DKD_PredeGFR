@@ -189,7 +189,7 @@ shinyServer(function(input, output, session) {
   })
   
   text_longitudinal <- eventReactive(input$goButton, {  
-    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corresponding 95% (light grey) and 50% prediction interval (dark grey) given the provided information. The observed baseline eGFR of the patient is indicated in red.These intervals comprise both sampling variability as well as the variability of individual data points. ", sep="" )
+    paste("The figure below illustrates the expected longitudinal trajectory of the patient's future eGFR measurements and the corresponding 95% (light grey) and 50% prediction interval (dark grey) given the provided information. These intervals comprise both sampling variability as well as the variability of individual data points. The observed baseline eGFR of the patient is indicated in red.", sep="" )
   })
   
   
