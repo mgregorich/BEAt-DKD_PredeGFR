@@ -119,7 +119,7 @@ shinyServer(function(input, output, session) {
     odata <- calc_out()
     odata <- data.frame(odata[,-1])
     
-    odata$pred.CI <- paste0("(",round(odata$pred.lo,2),", ",round(odata$pred.up,2), ")")
+    odata$pred.CI <- paste0("(",round(odata$pred.lo.95,2),", ",round(odata$pred.up.95,2), ")")
     odata$slope.CI <- paste0("(",round(odata$pred.slope.lo,2),", ",round(odata$pred.slope.up,2), ")")
     
     pred <- data.frame("Time"=odata$Time, "Prediction"=odata$pred, "CI"=odata$pred.CI)[-1,]
